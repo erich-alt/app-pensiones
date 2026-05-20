@@ -315,12 +315,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
       <div class="ind-grid">
         <div class="ind-card">
-          <div class="ind-lbl">UTM mes actual</div>
+          <div class="ind-lbl">UTM mes de pago</div>
           <div class="ind-val"><sup>$</sup><span id="i-utm">—</span></div>
           <div class="ind-src" id="i-utm-f">SII · cargando…</div>
         </div>
         <div class="ind-card">
-          <div class="ind-lbl">UF hoy</div>
+          <div class="ind-lbl">UF mes de pago</div>
           <div class="ind-val"><sup>$</sup><span id="i-uf">—</span></div>
           <div class="ind-src" id="i-uf-f">Banco Central</div>
         </div>
@@ -413,6 +413,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
         <button class="btn btn-red btn-full" onclick="iniciarPago()">
           Confirmar y pagar <span id="pay-btn-amt">$—</span> →
+        </button>
+        <button class="btn btn-green btn-full mt-12" onclick="abrirRegistroPagoActual()">
+          Ya pagué por banco · subir comprobante →
         </button>
         <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);margin-top:9px">
           BancoEstado 33360288990 · M.J. Martino Baldwin
@@ -743,7 +746,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       <button class="btn btn-red" onclick="abrirBancoSeleccionado()">Abrir banco →</button>
     </div>
     <div class="mo-foot">
-      <button class="btn btn-green" onclick="closeMo('mo-transfer');openMo('mo-add-hist')">Subir comprobante →</button>
+      <button class="btn btn-green" onclick="closeMo('mo-transfer');abrirRegistroPagoActual()">Subir comprobante →</button>
     </div>
   </div>
 </div>
@@ -989,6 +992,7 @@ const fUnidad = n => Number(n).toLocaleString('es-CL',{minimumFractionDigits:4,m
 const mes  = iso => { const d=new Date(iso); return MESES[d.getUTCMonth()]+' '+d.getUTCFullYear(); };
 const mesCorto = iso => { const d=new Date(iso); return MESES[d.getUTCMonth()].substring(0,3)+' '+d.getUTCFullYear(); };
 const fch  = iso => new Date(iso).toLocaleDateString('es-CL');
+const fechaApi = d => `${String(d.getUTCDate()).padStart(2,'0')}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${d.getUTCFullYear()}`;
 const periodoKey = periodo => {
   if(!periodo) return '';
   const p = periodo.toLowerCase().trim();
@@ -997,6 +1001,19 @@ const periodoKey = periodo => {
   return y && m >= 0 ? `${y}-${String(m+1).padStart(2,'0')}` : p;
 };
 const periodoActual = () => E.periodo || mes(new Date().toISOString());
+const sumarMesesPeriodo = (periodo, meses=0) => {
+  const key = periodoKey(periodo);
+  const [y,m] = key.split('-').map(Number);
+  if(!y || !m) return periodo;
+  const d = new Date(Date.UTC(y, m - 1 + meses, 1));
+  return mes(d.toISOString());
+};
+const fechaPeriodo = (periodo, dia=1) => {
+  const key = periodoKey(periodo);
+  const [y,m] = key.split('-').map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return new Date(Date.UTC(y, m - 1, Math.min(Math.max(1, dia), last)));
+};
 const unidadPeriodo = periodo => periodoKey(periodo) && periodoKey(periodo) < PENSION_UTM_DESDE ? 'UF' : 'UTM';
 const pagoNeto = p => Math.round(Number(p.neto ?? p.monto ?? 0));
 const cuotaPago = p => Math.round(Number(p.montoCuota ?? E.montoClp ?? calcNeto(p.periodo) ?? p.neto ?? p.monto ?? 0));
@@ -1009,6 +1026,14 @@ function pagosPeriodo(periodo=periodoActual()) {
 function saldoPeriodo(periodo=periodoActual(), cuota=calcNeto(periodo)||E.montoClp||0) {
   const pagado = pagosPeriodo(periodo).reduce((s,p)=>s+pagoNeto(p),0);
   return { cuota:Math.round(cuota), pagado, saldo:Math.max(0, Math.round(cuota)-pagado) };
+}
+
+function proximoPeriodoPendiente(desde=periodoActual()) {
+  for(let i=0; i<18; i++) {
+    const periodo = sumarMesesPeriodo(desde, i);
+    if(saldoPeriodo(periodo).saldo > 0) return periodo;
+  }
+  return desde;
 }
 
 function resumenAnual(year=new Date().getFullYear()) {
@@ -1055,14 +1080,41 @@ async function getInd(codigo) {
   return { valor: s[0]?.valor??null, fecha: s[0]?.fecha??null, serie: s.slice(0,24) };
 }
 
+async function getIndFecha(codigo, fecha) {
+  const r = await fetch(`https://mindicador.cl/api/${codigo}/${fechaApi(fecha)}`);
+  const d = await r.json();
+  const s = d.serie || [];
+  return { valor: s[0]?.valor??null, fecha: s[0]?.fecha??null, serie: [] };
+}
+
+async function cargarIndicadoresPeriodo(periodo, actuales) {
+  const baseKey = periodoKey(periodo);
+  const actualKey = periodoKey(mes(actuales.utm.fecha));
+  if(baseKey === actualKey) return actuales;
+  const [utmPeriodo, ufPeriodo] = await Promise.all([
+    getIndFecha('utm', fechaPeriodo(periodo, 1)),
+    getIndFecha('uf', fechaPeriodo(periodo, E.config.vencDia || 1))
+  ]);
+  return {
+    ...actuales,
+    utm: utmPeriodo.valor ? { ...utmPeriodo, serie: actuales.utm.serie } : actuales.utm,
+    uf: ufPeriodo.valor ? ufPeriodo : actuales.uf,
+  };
+}
+
 async function cargar() {
   try {
     const [utm, uf, ipc, dolar, euro] = await Promise.all([
       getInd('utm'), getInd('uf'), getInd('ipc'), getInd('dolar'), getInd('euro')
     ]);
+    let indicadores = { utm, uf, ipc, dolar, euro };
     E.utm=utm; E.uf=uf; E.ipc=ipc; E.dolar=dolar; E.euro=euro;
-    E.montoClp = calcNeto();
-    E.periodo  = mes(utm.fecha);
+    E.periodo = mes(utm.fecha);
+    const periodoPago = proximoPeriodoPendiente(E.periodo);
+    indicadores = await cargarIndicadoresPeriodo(periodoPago, indicadores);
+    E.utm=indicadores.utm; E.uf=indicadores.uf; E.ipc=indicadores.ipc; E.dolar=indicadores.dolar; E.euro=indicadores.euro;
+    E.periodo  = periodoPago;
+    E.montoClp = calcNeto(E.periodo);
     pintarUI();
   } catch(err) {
     const ahora = new Date();
@@ -1373,7 +1425,7 @@ function registrarPago(medio, total, neto, fee, archivo, montoCuota) {
   };
   E.pagos.unshift(pago);
   guardarPagos();
-  renderHist();
+  refrescarDespuesDePago();
   toast('✅ Pago registrado · '+medio);
   // Correo en background
   enviarCorreo(pago);
@@ -1425,14 +1477,52 @@ function quitarArchivo() {
 function poblarPeriodos() {
   const sel = g('mah-periodo');
   sel.innerHTML = '';
-  const hoy = new Date();
-  for(let i=0; i<24; i++) {
-    const d = new Date(hoy.getFullYear(), hoy.getMonth()-i, 1);
-    const val = MESES[d.getMonth()]+' '+d.getFullYear();
+  const base = fechaPeriodo(E.periodo || periodoActual(), 1);
+  for(let i=3; i>=-24; i--) {
+    const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth()+i, 1));
+    const val = MESES[d.getUTCMonth()]+' '+d.getUTCFullYear();
     const opt = document.createElement('option');
-    opt.value = val; opt.textContent = val;
+    opt.value = val; opt.textContent = val; opt.selected = val === periodoActual();
     sel.appendChild(opt);
   }
+}
+
+function cuotaManualPeriodo(periodo, montoRaw, utmRaw) {
+  if(periodoKey(periodo) === periodoKey(periodoActual())) return calcNeto(periodo) || Math.round(montoRaw);
+  if(utmRaw && unidadPeriodo(periodo) === 'UTM') return Math.round(E.config.monto * utmRaw);
+  return Math.round(montoRaw);
+}
+
+function abrirRegistroPagoActual() {
+  poblarPeriodos();
+  quitarArchivo();
+  const periodo = periodoActual();
+  const saldo = saldoPeriodo(periodo).saldo;
+  st('mah-title', 'Marcar cuota pagada');
+  st('mah-sub', 'Registra el pago directo y adjunta el comprobante si lo tienes');
+  const sel = g('mah-periodo');
+  if(sel && [...sel.options].some(o=>o.value===periodo)) sel.value = periodo;
+  if(g('mah-monto')) g('mah-monto').value = saldo || calcNeto(periodo) || '';
+  if(g('mah-utm')) g('mah-utm').value = E.utm?.valor || '';
+  if(g('mah-fecha')) g('mah-fecha').valueAsDate = new Date();
+  if(g('mah-medio')) g('mah-medio').value = 'Transferencia bancaria';
+  if(g('mah-ref')) g('mah-ref').value = '';
+  openMo('mo-add-hist');
+}
+
+async function refrescarDespuesDePago() {
+  const periodoPendiente = proximoPeriodoPendiente(E.periodo);
+  if(periodoKey(periodoPendiente) !== periodoKey(E.periodo)) {
+    try {
+      const indicadores = await cargarIndicadoresPeriodo(periodoPendiente, {
+        utm:E.utm, uf:E.uf, ipc:E.ipc, dolar:E.dolar, euro:E.euro
+      });
+      E.utm=indicadores.utm; E.uf=indicadores.uf; E.ipc=indicadores.ipc; E.dolar=indicadores.dolar; E.euro=indicadores.euro;
+      E.periodo = periodoPendiente;
+      E.montoClp = calcNeto(E.periodo);
+    } catch {}
+  }
+  pintarUI();
 }
 
 function guardarPagoManual() {
@@ -1450,7 +1540,7 @@ function guardarPagoManual() {
     id: Date.now(),
     periodo, fecha: fechaRaw||new Date().toLocaleDateString('es-CL'),
     fechaISO: fechaRaw ? new Date(fechaRaw).toISOString() : new Date().toISOString(),
-    monto: Math.round(montoRaw), neto: Math.round(montoRaw), fee: 0, montoCuota: calcNeto() || Math.round(montoRaw),
+    monto: Math.round(montoRaw), neto: Math.round(montoRaw), fee: 0, montoCuota: cuotaManualPeriodo(periodo, montoRaw, utmRaw),
     utm: utmRaw||null, unidad: E.config.unidad, cantUnidad: E.config.monto,
     medio: medio+(bancoOrig?' · '+bancoOrig:''),
     archivo: _archivoActual, ref: ref||null,
@@ -1459,12 +1549,12 @@ function guardarPagoManual() {
   E.pagos.unshift(pago);
   E.pagos.sort((a,b)=>new Date(b.fechaISO)-new Date(a.fechaISO));
   guardarPagos();
-  renderHist();
+  refrescarDespuesDePago();
   closeMo('mo-add-hist');
+  toast('✅ Pago registrado · '+periodo);
   // Limpiar form
   g('mah-monto').value=''; g('mah-utm').value=''; g('mah-fecha').value=''; g('mah-ref').value='';
   quitarArchivo();
-  toast('✅ Pago registrado con comprobante');
 }
 
 function guardarPagos() {
@@ -1521,7 +1611,7 @@ function eliminarPago(idx) {
   if(!confirm('¿Eliminar este pago del historial?')) return;
   E.pagos.splice(idx,1);
   guardarPagos();
-  renderHist();
+  refrescarDespuesDePago();
   toast('Pago eliminado');
 }
 
@@ -1661,8 +1751,7 @@ function guardarEdicionPago() {
   p.ref = g('mep-ref').value;
   guardarPagos();
   closeMo('mo-edit-pay');
-  renderHist();
-  renderBalancesInicio();
+  refrescarDespuesDePago();
   toast('Pago actualizado');
 }
 
