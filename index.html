@@ -1,0 +1,2360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AlimenTab">
+<meta name="theme-color" content="#0f0e0c">
+<meta name="description" content="App personal para calcular, pagar y registrar pensiones de alimentos.">
+<title>AlimenTab</title>
+<link rel="manifest" href="alimentab.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/alimentab-192.png">
+<link rel="apple-touch-icon" href="icons/alimentab-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f5f2eb; --bg2:#eceae2; --bg3:#e3e0d8;
+  --white:#fff; --ink:#1a1815; --ink2:#5a5650; --ink3:#9a9690;
+  --line:#dedad2; --line2:#ccc8bc;
+  --red:#c8391f; --red-bg:#fdf0ec; --red-ln:rgba(200,57,31,.18);
+  --amber:#b07808; --amb-bg:#fdf5e6; --amb-ln:rgba(176,120,8,.2);
+  --green:#246644; --grn-bg:#eaf2ec; --grn-ln:rgba(36,102,68,.18);
+  --blue:#2a4f82; --blu-bg:#edf2fb; --blu-ln:rgba(42,79,130,.18);
+  --sai:env(safe-area-inset-top,44px);
+  --sab:env(safe-area-inset-bottom,34px);
+  --sal:env(safe-area-inset-left,0px);
+  --sar:env(safe-area-inset-right,0px);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:'DM Sans',-apple-system,sans-serif;-webkit-font-smoothing:antialiased;overscroll-behavior:none;touch-action:manipulation;height:100dvh;overflow:hidden}
+input,select,textarea{font-size:16px!important;-webkit-appearance:none}
+button,input,select,textarea{font:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid rgba(200,57,31,.28);outline-offset:2px}
+
+/* ── SHELL ── */
+.shell{display:flex;flex-direction:column;height:100dvh;max-width:1180px;margin:0 auto;background:var(--bg);box-shadow:0 0 0 1px rgba(26,24,21,.04)}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--white);border-bottom:1px solid var(--line);padding-top:var(--sai);padding-left:calc(16px + var(--sal));padding-right:calc(16px + var(--sar));padding-bottom:10px;display:flex;align-items:flex-end;justify-content:space-between;flex-shrink:0;box-shadow:0 1px 6px rgba(26,24,21,.06);position:relative;z-index:50}
+.brand{display:flex;align-items:center;gap:9px}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--red);color:white;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:15px;font-weight:600}
+.brand-name{font-family:'Fraunces',serif;font-size:19px;font-weight:500;letter-spacing:-.025em}
+.brand-name em{color:var(--red);font-style:normal}
+.topbar-r{display:flex;align-items:center;gap:8px}
+.top-notif{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--white);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent}
+.pip{position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--red);border:1.5px solid white}
+.top-pay{background:var(--red);color:white;border:none;border-radius:9px;padding:8px 15px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
+
+/* ── SCROLL ── */
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-left:var(--sal);padding-right:var(--sar)}
+
+/* ── PÁGINAS ── */
+.page{display:none;padding:16px 16px 24px}
+.page.active{display:block;animation:pfade .2s ease}
+@keyframes pfade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+/* ── BOTTOM NAV ── */
+.bnav{background:var(--white);border-top:1px solid var(--line);display:flex;padding-bottom:var(--sab);padding-left:var(--sal);padding-right:var(--sar);flex-shrink:0;box-shadow:0 -1px 6px rgba(26,24,21,.05)}
+.bn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px 2px 7px;border:none;background:transparent;color:var(--ink3);font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.07em;cursor:pointer;gap:3px;position:relative;-webkit-tap-highlight-color:transparent;transition:color .15s}
+.bn .ico{font-size:20px;line-height:1}
+.bn.active{color:var(--red)}
+.bn.active::after{content:'';position:absolute;top:0;left:22%;right:22%;height:2px;background:var(--red);border-radius:0 0 2px 2px}
+
+/* ── PAGE HEADER ── */
+.ph{margin-bottom:16px}
+.ph-eye{font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.18em;color:var(--ink3);margin-bottom:5px}
+.ph-title{font-family:'Fraunces',serif;font-size:30px;font-weight:400;letter-spacing:-.03em;line-height:1.05}
+.ph-sub{font-size:13px;color:var(--ink2);margin-top:4px}
+
+/* ── HERO ── */
+.hero{background:var(--ink);border-radius:16px;padding:20px 20px 18px;margin-bottom:14px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;background:radial-gradient(circle,rgba(200,57,31,.38) 0%,transparent 70%)}
+.hero-eye{font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.18em;color:rgba(255,255,255,.35);margin-bottom:8px}
+.hero-amt{font-family:'Fraunces',serif;font-size:46px;font-weight:300;letter-spacing:-.04em;color:white;line-height:1}
+.hero-amt sup{font-size:18px;color:rgba(255,255,255,.5);vertical-align:super}
+.hero-calc{font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.45);margin-top:6px;margin-bottom:18px}
+.hero-calc b{color:rgba(255,255,255,.9)}
+.hero-btn{width:100%;padding:13px;border:none;border-radius:10px;background:var(--red);color:white;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.hero-btn:active{opacity:.85}
+
+/* ── IND GRID ── */
+.ind-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.ind-card{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:13px 14px}
+.ind-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink3);margin-bottom:5px}
+.ind-val{font-family:'Fraunces',serif;font-size:23px;font-weight:400;letter-spacing:-.02em;line-height:1}
+.ind-val sup{font-size:11px;color:var(--ink2);vertical-align:super}
+.ind-meta{font-size:11px;color:var(--ink2);margin-top:3px}
+.ind-src{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink3);margin-top:2px}
+
+/* ── CARD ── */
+.card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(26,24,21,.04)}
+.card-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.16em;color:var(--ink3);margin-bottom:10px}
+
+/* ── KV LIST ── */
+.kv{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.kv:last-child{border-bottom:none}
+.kv-k{color:var(--ink2);flex-shrink:0;margin-right:8px}
+.kv-v{font-weight:500;text-align:right}
+.kv-v.mono{font-family:'JetBrains Mono',monospace;font-size:11px}
+
+/* ── CALC BOX ── */
+.calc-box{background:var(--bg2);border-radius:12px;padding:14px;margin-bottom:14px}
+.crow{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--line)}
+.crow:last-child{border-bottom:none}
+.crow .ck{color:var(--ink2)}
+.crow .cv{font-family:'JetBrains Mono',monospace;font-size:12px}
+.crow.highlight{background:rgba(176,120,8,.06);margin:0 -4px;padding:6px 4px;border-radius:6px}
+.crow.highlight .cv{color:var(--amber);font-weight:500}
+.ctotal{display:flex;justify-content:space-between;align-items:baseline;padding-top:10px;margin-top:8px;border-top:2px solid var(--line2)}
+.ctotal .tl{font-family:'Fraunces',serif;font-size:15px}
+.ctotal .tv{font-family:'Fraunces',serif;font-size:32px;color:var(--red);letter-spacing:-.03em}
+.comision-nota{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.1em;margin-top:6px;text-align:right}
+
+/* ── MÉTODO PAGO ── */
+.pm-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.pm{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;cursor:pointer;background:var(--white);-webkit-tap-highlight-color:transparent;transition:border-color .15s,background .15s}
+.pm:active{opacity:.85}
+.pm.sel{border-color:var(--red);background:var(--red-bg)}
+.pm.free.sel{border-color:var(--green);background:var(--grn-bg)}
+.pm-logo{width:38px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;font-weight:700;font-size:10px;flex-shrink:0}
+.pm-logo.kh{background:#0a2e4a;color:white;font-size:12px}
+.pm-logo.tbk{background:#005baa;color:white;font-size:9px}
+.pm-logo.vs{background:#1a1f71;color:white}
+.pm-logo.mc{background:#eb001b;color:white;font-size:9px}
+.pm-logo.tf{background:var(--green);color:white;font-size:11px}
+.pm-name{font-size:14px;font-weight:500}
+.pm-det{font-size:11px;color:var(--ink2);margin-top:1px}
+.pm-fee{font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.07em;margin-top:2px}
+.fee-free{color:var(--green)}
+.fee-cost{color:var(--amber)}
+
+/* ── ALERT ── */
+.alert{display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border-radius:10px;font-size:13px;line-height:1.5;margin-bottom:12px}
+.ai{font-size:15px;flex-shrink:0;margin-top:1px}
+.alert-blue{background:var(--blu-bg);border:1px solid var(--blu-ln)}
+.alert-amber{background:var(--amb-bg);border:1px solid var(--amb-ln)}
+.alert-green{background:var(--grn-bg);border:1px solid var(--grn-ln)}
+.alert-red{background:var(--red-bg);border:1px solid var(--red-ln)}
+
+/* ── INSTALL ── */
+.install-card{display:none;align-items:flex-start;gap:11px;background:var(--ink);color:white;border-radius:14px;padding:13px 14px;margin-bottom:12px;box-shadow:0 8px 22px rgba(26,24,21,.14)}
+.install-card.show{display:flex}
+.install-card .ic-ico{width:32px;height:32px;border-radius:9px;background:var(--red);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;flex-shrink:0}
+.install-card .ic-body{flex:1;min-width:0}
+.install-card .ic-title{font-weight:700;font-size:14px;margin-bottom:2px}
+.install-card .ic-sub{font-size:12px;line-height:1.35;color:rgba(255,255,255,.72)}
+.install-card .ic-actions{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap}
+.install-card .ic-btn{border:none;border-radius:9px;background:white;color:var(--ink);padding:8px 11px;font-size:12px;font-weight:700;cursor:pointer}
+.install-card .ic-close{border:none;background:transparent;color:rgba(255,255,255,.6);font-size:18px;line-height:1;cursor:pointer;padding:1px 3px}
+.install-card .ic-ghost{background:rgba(255,255,255,.12);color:white}
+
+/* ── BOTÓN ── */
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:13px 18px;border-radius:12px;border:none;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
+.btn:active{opacity:.82}
+.btn-red{background:var(--red);color:white}
+.btn-green{background:var(--green);color:white}
+.btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink2)}
+.btn-amber{background:var(--amber);color:white}
+.btn-full{width:100%;padding:14px;font-size:16px}
+.btn-sm{padding:7px 13px;font-size:13px}
+.btn-row{display:flex;gap:8px}
+.btn-row .btn{flex:1}
+
+/* ── HISTORIAL ITEMS ── */
+.hi{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:14px 15px;margin-bottom:10px}
+.hi-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.hi-per{font-family:'Fraunces',serif;font-size:18px;font-weight:400}
+.hi-amt{font-family:'Fraunces',serif;font-size:20px;color:var(--green)}
+.hi-bot{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px}
+.hi-calc{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink3)}
+.hi-actions{display:flex;gap:6px;margin-top:8px}
+.hi-comp-tag{display:flex;align-items:center;gap:4px;font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--blue);padding:3px 8px;background:var(--blu-bg);border-radius:5px;cursor:pointer}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:3px;font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.08em;padding:3px 7px;border-radius:5px}
+.bg-green{background:var(--grn-bg);color:var(--green)}
+.bg-amber{background:var(--amb-bg);color:var(--amber)}
+.bg-blue{background:var(--blu-bg);color:var(--blue)}
+.bg-red{background:var(--red-bg);color:var(--red)}
+
+/* ── BALANCE / CASES ── */
+.balance-strip{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.balance-box{border:1px solid var(--line);background:var(--white);border-radius:14px;padding:12px 13px}
+.balance-box.warn{background:var(--red-bg);border-color:var(--red-ln)}
+.balance-box.ok{background:var(--grn-bg);border-color:var(--grn-ln)}
+.bb-l{font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);margin-bottom:4px}
+.bb-v{font-family:'Fraunces',serif;font-size:24px;letter-spacing:-.02em}
+.pay-adjust{display:grid;grid-template-columns:1fr;gap:8px;margin:12px 0}
+.pay-adjust .fi{background:var(--white)}
+.filter-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.case-item{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
+.case-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px}
+.case-title{font-family:'Fraunces',serif;font-size:18px}
+.case-meta{font-size:12px;color:var(--ink2);line-height:1.45}
+.doc-row{display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1px solid var(--line);padding-top:9px;margin-top:9px;font-size:12px}
+
+/* ── FORMS ── */
+.fg{margin-bottom:12px}
+.fl{display:block;font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink2);margin-bottom:5px}
+.fi{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:11px 13px;font-family:'DM Sans',sans-serif;color:var(--ink);outline:none;transition:border-color .18s}
+.fi:focus{border-color:var(--red);background:var(--white)}
+.fi.editable{background:var(--white);border-color:var(--amber);border-style:dashed}
+.fi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fi-note{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:.1em;margin-top:4px}
+
+/* ── UPLOAD AREA ── */
+.upload-area{border:2px dashed var(--line2);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:12px}
+.upload-area:hover,.upload-area.drag{border-color:var(--red);background:var(--red-bg)}
+.upload-area input{display:none}
+.ua-icon{font-size:28px;margin-bottom:8px}
+.ua-title{font-family:'Fraunces',serif;font-size:16px;margin-bottom:3px}
+.ua-sub{font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3)}
+.file-attached{display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--grn-bg);border:1px solid var(--grn-ln);border-radius:10px;margin-bottom:10px;font-size:13px}
+.file-attached .fa-name{flex:1;font-weight:500;color:var(--green)}
+.file-attached .fa-rm{border:none;background:transparent;color:var(--ink3);cursor:pointer;font-size:16px;padding:0 4px}
+
+/* ── MODAL (bottom sheet) ── */
+.mo-ov{display:none;position:fixed;inset:0;background:rgba(26,24,21,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:200;align-items:flex-end}
+.mo-ov.open{display:flex}
+.mo{background:var(--white);border-radius:22px 22px 0 0;padding:0 18px;padding-left:calc(18px + var(--sal));padding-right:calc(18px + var(--sar));padding-bottom:calc(18px + var(--sab));width:100%;max-height:90dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-shadow:0 -8px 40px rgba(26,24,21,.15);animation:sheet .3s cubic-bezier(.32,.72,0,1)}
+@keyframes sheet{from{transform:translateY(100%)}to{transform:none}}
+.mo-pill{width:36px;height:4px;background:var(--line);border-radius:2px;margin:14px auto 16px;display:block}
+.mo h2{font-family:'Fraunces',serif;font-size:23px;font-weight:400;letter-spacing:-.02em;margin-bottom:3px}
+.mo-sub{font-size:13px;color:var(--ink2);margin-bottom:18px}
+.mo-foot{display:flex;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.mo-foot .btn{flex:1}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:calc(var(--sab) + 72px);left:16px;right:16px;background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:13px;font-size:14px;font-weight:500;z-index:999;opacity:0;transform:translateY(8px);transition:opacity .25s,transform .25s;text-align:center;pointer-events:none;box-shadow:0 8px 24px rgba(26,24,21,.2)}
+#toast.show{opacity:1;transform:translateY(0)}
+
+/* ── UTILS ── */
+.divider{height:1px;background:var(--line);margin:14px 0}
+.mb-8{margin-bottom:8px}.mb-12{margin-bottom:12px}.mb-16{margin-bottom:16px}
+.mt-8{margin-top:8px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}
+.flex-b{display:flex;align-items:center;justify-content:space-between}
+.red{color:var(--red)}.green{color:var(--green)}.amber{color:var(--amber)}.mute{color:var(--ink2)}
+.mono{font-family:'JetBrains Mono',monospace}
+.empty{text-align:center;padding:32px 16px;color:var(--ink3);font-size:14px;line-height:1.6}
+.edit-btn{border:none;background:transparent;color:var(--amber);font-size:13px;cursor:pointer;padding:2px 6px;border-radius:5px;-webkit-tap-highlight-color:transparent}
+
+@media (min-width: 760px){
+  body{background:linear-gradient(180deg,#fbfaf6 0%,var(--bg2) 100%)}
+  .shell{height:min(100dvh,960px);margin:0 auto}
+  .topbar{padding-top:18px}
+  .scroll{padding:10px 22px 26px}
+  .page{max-width:980px;margin:0 auto;padding:18px 0 30px}
+  .page.active{animation:none}
+  #p-inicio.page.active{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr);gap:14px;align-items:start}
+  #p-inicio .ph{grid-column:1/-1}
+  #p-pagar.page.active,#p-historial.page.active,#p-indicadores.page.active,#p-config.page.active{max-width:760px}
+  #p-causas.page.active{max-width:860px}
+  .hero{border-radius:14px}
+  .ind-grid{grid-template-columns:repeat(3,1fr)}
+  #p-inicio .ind-grid{grid-template-columns:1fr 1fr}
+  .bnav{position:sticky;bottom:0;max-width:1180px;margin:0 auto}
+  .bn{padding-top:11px}
+  .mo-ov{align-items:center;justify-content:center;padding:24px}
+  .mo{max-width:560px;border-radius:18px;padding-bottom:18px;box-shadow:0 22px 70px rgba(26,24,21,.22)}
+  #toast{left:50%;right:auto;bottom:28px;width:min(420px,calc(100vw - 32px));transform:translate(-50%,8px)}
+  #toast.show{transform:translate(-50%,0)}
+}
+
+@media (display-mode: standalone){
+  .install-card{display:none!important}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div class="brand-name">Alimen<em>Tab</em></div>
+    </div>
+    <div class="topbar-r">
+      <button class="top-pay" onclick="nav('p-pagar')">Pagar</button>
+      <div class="top-notif" onclick="openMo('mo-notif')">🔔<div class="pip"></div></div>
+    </div>
+  </header>
+
+  <div class="scroll">
+
+    <!-- ═══════════════════ INICIO ═══════════════════ -->
+    <div id="p-inicio" class="page active">
+      <div class="install-card" id="install-card" role="status" aria-live="polite">
+        <div class="ic-ico">A</div>
+        <div class="ic-body">
+          <div class="ic-title">Instalar AlimenTab</div>
+          <div class="ic-sub" id="install-copy">Úsala como app en este dispositivo, con acceso más rápido y soporte sin conexión.</div>
+          <div class="ic-actions">
+            <button class="ic-btn" id="install-btn" type="button" onclick="instalarApp()">Instalar</button>
+            <button class="ic-btn ic-ghost" type="button" onclick="ocultarInstalacion()">Ahora no</button>
+          </div>
+        </div>
+        <button class="ic-close" type="button" aria-label="Cerrar aviso de instalación" onclick="ocultarInstalacion()">×</button>
+      </div>
+      <div class="ph">
+        <div class="ph-eye">Alimentante · Erich Harseim Díaz</div>
+        <div class="ph-title">Panel principal</div>
+        <div class="ph-sub">Gracia y Lukas · Acuerdo Mar 2026</div>
+      </div>
+
+      <div class="hero">
+        <div class="hero-eye">Cuota <span id="h-mes">—</span> · UTM del mes de pago</div>
+        <div class="hero-amt"><sup>$</sup><span id="h-monto">—</span></div>
+        <div class="hero-calc">21,1108 UTM × <b id="h-utm">$—</b> · SII <span id="h-utm-mes">—</span></div>
+        <button class="hero-btn" onclick="nav('p-pagar')">Pagar cuota →</button>
+      </div>
+
+      <div class="ind-grid">
+        <div class="ind-card">
+          <div class="ind-lbl">UTM mes actual</div>
+          <div class="ind-val"><sup>$</sup><span id="i-utm">—</span></div>
+          <div class="ind-src" id="i-utm-f">SII · cargando…</div>
+        </div>
+        <div class="ind-card">
+          <div class="ind-lbl">UF hoy</div>
+          <div class="ind-val"><sup>$</sup><span id="i-uf">—</span></div>
+          <div class="ind-src" id="i-uf-f">Banco Central</div>
+        </div>
+        <div class="ind-card">
+          <div class="ind-lbl">IPC último mes</div>
+          <div class="ind-val"><span id="i-ipc">—</span>%</div>
+          <div class="ind-src" id="i-ipc-f">INE</div>
+        </div>
+        <div class="ind-card">
+          <div class="ind-lbl">Sueldo mínimo</div>
+          <div class="ind-val"><sup>$</sup><span id="i-sm">539.000</span></div>
+          <div class="ind-src" id="i-sm-f">DT · desde ene 2026</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="flex-b mb-8">
+          <div class="card-lbl" style="margin:0">Mi acuerdo</div>
+          <button class="edit-btn" onclick="nav('p-config')">✏ Editar</button>
+        </div>
+        <div class="kv"><span class="kv-k">Monto fijado</span><span class="kv-v mono" id="ini-monto-utm">21,1108 UTM/mes</span></div>
+        <div class="kv"><span class="kv-k">Reajuste</span><span class="kv-v" id="ini-reajuste">Semestral · IPC</span></div>
+        <div class="kv"><span class="kv-k">Vencimiento</span><span class="kv-v" id="ini-venc">Día 5 de cada mes</span></div>
+        <div class="kv"><span class="kv-k">Próx. reajuste</span><span class="kv-v" id="ini-prox-rej">—</span></div>
+        <div class="kv"><span class="kv-k">Banco destino</span><span class="kv-v mono" id="ini-banco">BancoEstado</span></div>
+        <div class="kv"><span class="kv-k">N° cuenta</span><span class="kv-v mono" id="ini-cuenta">33360288990</span></div>
+      </div>
+
+      <div class="card">
+        <div class="flex-b mb-12">
+          <div class="card-lbl" style="margin:0">Últimos pagos</div>
+          <button class="btn btn-ghost btn-sm" onclick="nav('p-historial')">Ver todos →</button>
+        </div>
+        <div id="prev-pagos"><div class="empty">Sin pagos registrados aún</div></div>
+      </div>
+
+      <div class="card" id="mora-card">
+        <div class="flex-b mb-8">
+          <div class="card-lbl" style="margin:0">Moras y saldos</div>
+          <span class="badge bg-green" id="mora-badge">Al día</span>
+        </div>
+        <div id="mora-list"><div class="empty" style="padding:12px">Sin saldos pendientes</div></div>
+      </div>
+    </div><!-- /inicio -->
+
+
+    <!-- ═══════════════════ PAGAR ═══════════════════ -->
+    <div id="p-pagar" class="page">
+      <div class="ph">
+        <div class="ph-eye">Pago mensual · UTM del mes de pago</div>
+        <div class="ph-title">Pagar cuota<br><span class="red" id="pay-mes">—</span></div>
+      </div>
+
+      <div class="card mb-12">
+        <div class="card-lbl">Cálculo automático</div>
+        <div class="calc-box">
+          <div class="crow"><span class="ck">Monto fijado (acuerdo)</span><span class="cv">21,1108 UTM/mes</span></div>
+          <div class="crow"><span class="ck">UTM <span id="pay-mes-utm">—</span> · SII</span><span class="cv" id="pay-utm-val">$—</span></div>
+          <div class="crow"><span class="ck">Pensión neta</span><span class="cv" id="pay-neto">$—</span></div>
+          <div class="crow"><span class="ck">Pagado este período</span><span class="cv green" id="pay-pagado">$—</span></div>
+          <div class="crow"><span class="ck">Saldo del período</span><span class="cv red" id="pay-saldo">$—</span></div>
+          <div class="crow highlight" id="comision-row" style="display:none">
+            <span class="ck">Comisión plataforma (<span id="com-pct">—</span>%)</span>
+            <span class="cv" id="com-amt">$—</span>
+          </div>
+          <div class="ctotal">
+            <span class="tl">Total a cobrar</span>
+            <span class="tv" id="pay-total">$—</span>
+          </div>
+        </div>
+        <div class="comision-nota" id="comision-nota" style="display:none">La comisión se suma para que la pensión llegue íntegra</div>
+
+        <div class="pay-adjust">
+          <div class="fg" style="margin:0">
+            <label class="fl">Monto que quieres pagar ahora</label>
+            <input class="fi editable" id="pay-monto-ahora" type="number" step="1" min="1" oninput="actualizarPagoEditable()" placeholder="Saldo del período">
+            <div class="fi-note" id="pay-monto-nota">Puedes pagar parcial; la app registrará el saldo pendiente.</div>
+          </div>
+        </div>
+
+        <div class="card-lbl mt-12">Medio de pago</div>
+        <div class="pm-list" id="pm-list">
+          <!-- generado por JS -->
+        </div>
+
+        <div class="alert alert-blue mb-12">
+          <div class="ai">📧</div>
+          <div>Correo automático a <strong>María José Martino Baldwin</strong> al confirmar.</div>
+        </div>
+
+        <button class="btn btn-red btn-full" onclick="iniciarPago()">
+          Confirmar y pagar <span id="pay-btn-amt">$—</span> →
+        </button>
+        <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);margin-top:9px">
+          BancoEstado 33360288990 · M.J. Martino Baldwin
+        </div>
+      </div>
+    </div><!-- /pagar -->
+
+
+    <!-- ═══════════════════ HISTORIAL ═══════════════════ -->
+    <div id="p-historial" class="page">
+      <div class="ph">
+        <div class="ph-eye">Registro completo</div>
+        <div class="ph-title">Historial</div>
+      </div>
+
+      <div class="ind-grid mb-12">
+        <div class="ind-card">
+          <div class="ind-lbl">Pagos totales</div>
+          <div class="ind-val" id="hn">0</div>
+        </div>
+        <div class="ind-card">
+          <div class="ind-lbl">Monto total</div>
+          <div class="ind-val" style="font-size:19px"><sup style="font-size:11px">$</sup><span id="htotal">0</span></div>
+        </div>
+      </div>
+
+      <div class="balance-strip">
+        <div class="balance-box ok">
+          <div class="bb-l">Pagado año</div>
+          <div class="bb-v green" id="hy-paid">$0</div>
+        </div>
+        <div class="balance-box warn">
+          <div class="bb-l">Pendiente año</div>
+          <div class="bb-v red" id="hy-due">$0</div>
+        </div>
+      </div>
+
+      <div class="card mb-12">
+        <div class="card-lbl">Filtrar historial</div>
+        <div class="filter-row">
+          <select class="fi" id="hist-year" onchange="renderHist()"></select>
+          <select class="fi" id="hist-month" onchange="renderHist()">
+            <option value="">Todos los meses</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Subir historial manual -->
+      <div class="card mb-12">
+        <div class="card-lbl">Agregar pago histórico</div>
+        <button class="btn btn-amber btn-full" onclick="openMo('mo-add-hist')">+ Registrar pago anterior</button>
+      </div>
+
+      <div id="hist-list"><div class="empty">Sin pagos registrados.<br>Realiza tu primer pago o agrega uno histórico.</div></div>
+    </div><!-- /historial -->
+
+
+    <!-- ═══════════════════ INDICADORES ═══════════════════ -->
+    <div id="p-indicadores" class="page">
+      <div class="ph">
+        <div class="ph-eye">SII · Banco Central · INE · DTrab.</div>
+        <div class="ph-title">Indicadores</div>
+        <div class="ph-sub">Fuente oficial · actualización automática</div>
+      </div>
+
+      <div class="ind-grid mb-12">
+        <div class="ind-card">
+          <div class="ind-lbl">UTM · <span id="d-utm-mes">—</span></div>
+          <div class="ind-val"><sup>$</sup><span id="d-utm">—</span></div>
+          <div class="ind-src" id="d-utm-f">SII · mindicador.cl</div>
+        </div>
+        <div class="ind-card">
+          <div class="ind-lbl">UF · <span id="d-uf-mes">hoy</span></div>
+          <div class="ind-val"><sup>$</sup><span id="d-uf">—</span></div>
+          <div class="ind-src" id="d-uf-f">Banco Central</div>
+        </div>
+        <div class="ind-card">
+          <div class="ind-lbl">IPC · <span id="d-ipc-mes">—</span></div>
+          <div class="ind-val"><span id="d-ipc">—</span>%</div>
+          <div class="ind-src" id="d-ipc-f">INE</div>
+        </div>
+        <div class="ind-card">
+          <div class="ind-lbl">Dólar · hoy</div>
+          <div class="ind-val"><sup>$</sup><span id="d-dolar">—</span></div>
+          <div class="ind-src" id="d-dolar-f">Banco Central</div>
+        </div>
+        <div class="ind-card">
+          <div class="ind-lbl">Euro · hoy</div>
+          <div class="ind-val"><sup>$</sup><span id="d-euro">—</span></div>
+          <div class="ind-src" id="d-euro-f">Banco Central</div>
+        </div>
+        <div class="ind-card">
+          <div class="ind-lbl">Sueldo mínimo</div>
+          <div class="ind-val"><sup>$</sup><span id="d-sm">539.000</span></div>
+          <div class="ind-src" id="d-sm-f">DT · desde ene 2026</div>
+        </div>
+      </div>
+
+      <div class="card mb-12">
+        <div class="card-lbl">Si tu pensión estuviera fijada en…</div>
+        <div class="kv"><span class="kv-k">21,1108 UTM <span class="badge bg-red">Tu caso</span></span><span class="kv-v red" id="eq-utm">$—</span></div>
+        <div class="kv"><span class="kv-k">21,1108 UF</span><span class="kv-v" id="eq-uf">$—</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-lbl">UTM últimos meses · tu cuota exacta</div>
+        <div id="hist-utm"><div class="empty" style="padding:16px">Cargando…</div></div>
+      </div>
+    </div><!-- /indicadores -->
+
+    <!-- ═══════════════════ CAUSAS Y DOCUMENTOS ═══════════════════ -->
+    <div id="p-causas" class="page">
+      <div class="ph">
+        <div class="ph-eye">Poder Judicial · Documentos</div>
+        <div class="ph-title">Causas y respaldo</div>
+        <div class="ph-sub">Registro interno de causas, escritos y documentos importantes</div>
+      </div>
+
+      <div class="alert alert-blue mb-12">
+        <div class="ai">🔐</div>
+        <div>La conexión automática con Oficina Judicial Virtual debe hacerse con autorización y credenciales seguras. Esta vista queda preparada para sincronizar causas y, mientras tanto, permite llevar registro manual.</div>
+      </div>
+
+      <div class="btn-row mb-12">
+        <button class="btn btn-red" onclick="openMo('mo-causa')">+ Agregar causa</button>
+        <button class="btn btn-ghost" onclick="abrirOJV()">Entrar con ClaveÚnica</button>
+        <button class="btn btn-green" onclick="autenticarYDescargarOJV()">Autenticar y descargar</button>
+        <button class="btn btn-ghost" onclick="openMo('mo-ojv-guide')">Paso a paso</button>
+      </div>
+      <div class="card mb-12">
+        <div class="card-lbl">Importar desde OJV</div>
+        <input class="fi" type="file" id="ojv-import" accept=".json" onchange="importarCausasOJV(this)">
+        <div class="fi-note">Usa el archivo alimentab-ojv-causas.json generado por el ayudante de Edge.</div>
+      </div>
+      <div class="card mb-12">
+        <div class="card-lbl">Adjuntar PDFs descargados</div>
+        <input class="fi" type="file" id="ojv-doc-import" accept=".pdf" multiple webkitdirectory directory onchange="importarDocumentosOJV(this)">
+        <div class="fi-note">Selecciona la carpeta AlimenTab OJV completa o los PDFs descargados. La app creará/asociará por RIT.</div>
+        <button class="btn btn-ghost btn-full mt-8" onclick="g('ojv-doc-import').click()">Importar carpeta completa</button>
+        <button class="btn btn-red btn-full mt-8" onclick="sincronizarDocumentosLocales()">Sincronizar PDFs y resumir</button>
+        <button class="btn btn-ghost btn-full mt-8" onclick="borrarCausasLocales()">Borrar causas y documentos locales</button>
+      </div>
+
+      <div class="ind-grid mb-12">
+        <div class="ind-card">
+          <div class="ind-lbl">Causas</div>
+          <div class="ind-val" id="case-n">0</div>
+        </div>
+        <div class="ind-card">
+          <div class="ind-lbl">Escritos</div>
+          <div class="ind-val" id="case-docs">0</div>
+        </div>
+        <div class="ind-card">
+          <div class="ind-lbl">Última actualización</div>
+          <div class="ind-val" style="font-size:17px" id="case-upd">—</div>
+        </div>
+      </div>
+
+      <div id="case-list"><div class="empty">Sin causas registradas aún</div></div>
+    </div><!-- /causas -->
+
+
+    <!-- ═══════════════════ MI PENSIÓN (EDITABLE) ═══════════════════ -->
+    <div id="p-config" class="page">
+      <div class="ph">
+        <div class="ph-eye">Configuración · Editable</div>
+        <div class="ph-title">Mi pensión</div>
+        <div class="ph-sub">Puedes corregir cualquier dato</div>
+      </div>
+
+      <div class="alert alert-amber mb-12">
+        <div class="ai">✏️</div>
+        <div>Los campos con borde naranja son editables. Toca cualquiera para modificarlo.</div>
+      </div>
+
+      <div class="card mb-12">
+        <div class="card-lbl">Datos del acuerdo</div>
+        <div class="fg"><label class="fl">Documento</label><input class="fi editable" id="cfg-doc" value="Acuerdo Completo y Suficiente Ley 19.947"></div>
+        <div class="fg"><label class="fl">Escritura / Referencia</label><input class="fi editable" id="cfg-escritura" value="Rep. N°11.391-2026 · 03/03/2026"></div>
+        <div class="fg"><label class="fl">Notaría / Tribunal</label><input class="fi editable" id="cfg-notaria" value="M. Soledad Lascar Merino · 38° Stgo"></div>
+        <div class="fi-row">
+          <div class="fg"><label class="fl">Monto (número)</label><input class="fi editable" id="cfg-monto" type="number" step="0.0001" value="21.1108" oninput="recalcular()"></div>
+          <div class="fg"><label class="fl">Unidad</label>
+            <select class="fi editable" id="cfg-unidad" onchange="recalcular()">
+              <option value="UTM" selected>UTM</option>
+              <option value="UF">UF</option>
+              <option value="CLP">CLP fijo</option>
+              <option value="SM">Sueldos mínimos</option>
+            </select>
+          </div>
+        </div>
+        <div class="fi-note" id="cfg-monto-nota">✓ Monto correcto del acuerdo notarial</div>
+        <div class="fi-row mt-8">
+          <div class="fg"><label class="fl">Reajuste</label>
+            <select class="fi editable" id="cfg-reajuste">
+              <option value="Semestral" selected>Semestral</option>
+              <option value="Anual">Anual</option>
+              <option value="Ninguno">Sin reajuste</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Índice reajuste</label>
+            <select class="fi editable" id="cfg-idx-rej">
+              <option value="IPC" selected>IPC</option>
+              <option value="UTM">UTM</option>
+              <option value="UF">UF</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg"><label class="fl">Día de vencimiento</label>
+          <select class="fi editable" id="cfg-venc">
+            <option value="1">Día 1</option><option value="5" selected>Día 5</option>
+            <option value="10">Día 10</option><option value="15">Día 15</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card mb-12">
+        <div class="card-lbl">Cuenta de pago</div>
+        <div class="fg"><label class="fl">Nombre receptora</label><input class="fi editable" id="cfg-receptora" value="María José Martino Baldwin"></div>
+        <div class="fg"><label class="fl">RUT receptora</label><input class="fi editable" id="cfg-rut-rec" value="15.636.887-3"></div>
+        <div class="fg"><label class="fl">Banco</label>
+          <select class="fi editable" id="cfg-banco">
+            <option value="BancoEstado" selected>BancoEstado</option>
+            <option value="Banco de Chile">Banco de Chile</option>
+            <option value="Santander">Santander</option>
+            <option value="BCI">BCI</option>
+            <option value="Scotiabank">Scotiabank</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Tipo de cuenta</label>
+          <select class="fi editable" id="cfg-tipo-cta">
+            <option value="Ahorro a la vista" selected>Ahorro a la vista</option>
+            <option value="Cuenta corriente">Cuenta corriente</option>
+            <option value="Cuenta RUT">Cuenta RUT</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">N° cuenta</label><input class="fi editable" id="cfg-cuenta" value="33360288990" type="text"></div>
+        <div class="fg"><label class="fl">Beneficiarios</label><input class="fi editable" id="cfg-benef" value="Gracia y Lukas Harseim Martino"></div>
+      </div>
+
+      <div class="card mb-12">
+        <div class="card-lbl">Notificaciones</div>
+        <div class="fg"><label class="fl">Mi correo (Outlook)</label><input class="fi editable" id="cfg-email-yo" value="erich@harseim.com" type="email"></div>
+        <div class="fg"><label class="fl">Correo receptora</label><input class="fi editable" id="cfg-email-rec" placeholder="correo de María José" type="email"></div>
+      </div>
+
+      <div class="card mb-12">
+        <div class="card-lbl">Sincronización en la nube</div>
+        <div class="fg"><label class="fl">URL Supabase</label><input class="fi editable" id="cloud-url" placeholder="https://tu-proyecto.supabase.co"></div>
+        <div class="fg"><label class="fl">Clave pública anon</label><input class="fi editable" id="cloud-key" placeholder="eyJ..."></div>
+        <div class="fg"><label class="fl">Correo de acceso</label><input class="fi editable" id="cloud-email" type="email" placeholder="tu correo"></div>
+        <div class="fg"><label class="fl">Clave de acceso Supabase (opcional, no se guarda)</label><input class="fi editable" id="cloud-password" type="password" placeholder="Solo si creaste usuario con clave"></div>
+        <div class="fi-note" id="cloud-status">Primero pega la URL de Supabase y la clave pública anon; mientras tanto tus datos quedan solo en este dispositivo</div>
+        <div class="btn-row mt-8">
+          <button class="btn btn-ghost" onclick="guardarCloud()">Guardar nube</button>
+          <button class="btn btn-red" onclick="solicitarEnlaceNube()">Entrar</button>
+        </div>
+        <div class="btn-row mt-8">
+          <button class="btn btn-ghost" onclick="bajarNube()">Bajar datos</button>
+          <button class="btn btn-ghost" onclick="subirNube()">Subir datos</button>
+          <button class="btn btn-green" onclick="sincronizarNube()">Sincronizar</button>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-red btn-full" onclick="guardarConfig()">Guardar cambios</button>
+      </div>
+      <div style="margin-top:8px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em">Los cambios se guardan en este dispositivo</div>
+    </div><!-- /config -->
+
+  </div><!-- /scroll -->
+
+  <nav class="bnav">
+    <button class="bn active" data-p="p-inicio"      onclick="nav('p-inicio',this)"><span class="ico">◉</span>Inicio</button>
+    <button class="bn"        data-p="p-pagar"       onclick="nav('p-pagar',this)"><span class="ico">↗</span>Pagar</button>
+    <button class="bn"        data-p="p-historial"   onclick="nav('p-historial',this)"><span class="ico">≡</span>Historial</button>
+    <button class="bn"        data-p="p-indicadores" onclick="nav('p-indicadores',this)"><span class="ico">📊</span>Indicadores</button>
+    <button class="bn"        data-p="p-causas"      onclick="nav('p-causas',this)"><span class="ico">§</span>Causas</button>
+    <button class="bn"        data-p="p-config"      onclick="nav('p-config',this)"><span class="ico">⚙</span>Pensión</button>
+  </nav>
+</div>
+
+<!-- ════════════════════════ MODALES ════════════════════════ -->
+
+<!-- Confirmar pago -->
+<div class="mo-ov" id="mo-confirm">
+  <div class="mo">
+    <div class="mo-pill"></div>
+    <h2>Confirmar pago</h2>
+    <div class="mo-sub" id="mc-sub">—</div>
+    <div id="mc-det" style="background:var(--bg2);border-radius:12px;padding:14px;margin-bottom:12px;font-size:13px"></div>
+    <div class="alert alert-blue">
+      <div class="ai">📧</div>
+      <div>Correo automático a <strong id="mc-email-rec">María José Martino Baldwin</strong>.</div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-ghost" onclick="closeMo('mo-confirm')">Cancelar</button>
+      <button class="btn btn-red" id="mc-ok" onclick="procesarPago()">Pagar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Transferencia bancaria manual -->
+<div class="mo-ov" id="mo-transfer">
+  <div class="mo">
+    <div class="mo-pill"></div>
+    <h2>Transferencia bancaria</h2>
+    <div class="mo-sub">Sin comisión · la pensión llega íntegra</div>
+    <div style="background:var(--bg2);border-radius:12px;padding:16px;margin-bottom:14px;font-size:13px">
+      <div class="kv"><span class="kv-k">Beneficiaria</span><span class="kv-v" id="tf-nombre">—</span></div>
+      <div class="kv"><span class="kv-k">RUT</span><span class="kv-v mono" id="tf-rut">—</span></div>
+      <div class="kv"><span class="kv-k">Banco</span><span class="kv-v" id="tf-banco">—</span></div>
+      <div class="kv"><span class="kv-k">Tipo cuenta</span><span class="kv-v" id="tf-tipo">—</span></div>
+      <div class="kv"><span class="kv-k">N° cuenta</span><span class="kv-v mono" id="tf-cuenta">—</span></div>
+      <div class="kv"><span class="kv-k">Monto exacto</span><span class="kv-v red" style="font-family:'Fraunces',serif;font-size:20px" id="tf-monto">—</span></div>
+    </div>
+    <div class="fg">
+      <label class="fl">Banco desde donde pagarás</label>
+      <select class="fi" id="tf-banco-origen"></select>
+    </div>
+    <div class="alert alert-green">
+      <div class="ai">✓</div>
+      <div>Primero copia los datos, luego abre tu banco oficial e ingresa con tus credenciales. Verifica el destinatario y el monto antes de confirmar.</div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-ghost" onclick="copiarDatosTransferencia()">Copiar datos</button>
+      <button class="btn btn-red" onclick="abrirBancoSeleccionado()">Abrir banco →</button>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-green" onclick="closeMo('mo-transfer');openMo('mo-add-hist')">Subir comprobante →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Agregar pago histórico / comprobante -->
+<div class="mo-ov" id="mo-add-hist">
+  <div class="mo">
+    <div class="mo-pill"></div>
+    <h2 id="mah-title">Registrar pago</h2>
+    <div class="mo-sub" id="mah-sub">Completa los datos del pago realizado</div>
+
+    <div class="fg">
+      <label class="fl">Período (mes de pago)</label>
+      <select class="fi" id="mah-periodo"></select>
+    </div>
+    <div class="fi-row">
+      <div class="fg">
+        <label class="fl">Monto pagado CLP</label>
+        <input class="fi" id="mah-monto" type="number" placeholder="Ej: 1451789">
+      </div>
+      <div class="fg">
+        <label class="fl">UTM del mes</label>
+        <input class="fi" id="mah-utm" type="number" placeholder="Ej: 68770" step="1">
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Fecha de pago</label>
+      <input class="fi" id="mah-fecha" type="date">
+    </div>
+    <div class="fg">
+      <label class="fl">Medio de pago</label>
+      <select class="fi" id="mah-medio">
+        <option value="Transferencia bancaria">Transferencia bancaria</option>
+        <option value="Khipu">Khipu</option>
+        <option value="Webpay Plus">Webpay Plus</option>
+        <option value="Visa">Visa</option>
+        <option value="Mastercard">Mastercard</option>
+        <option value="Depósito en cuenta">Depósito en cuenta</option>
+        <option value="Caja Los Andes">Caja Los Andes</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Banco origen</label>
+      <select class="fi" id="mah-banco-orig">
+        <option value="Banco Itaú">Banco Itaú</option>
+        <option value="Banco de Chile">Banco de Chile</option>
+        <option value="BancoEstado">BancoEstado</option>
+        <option value="Santander">Santander</option>
+        <option value="BCI">BCI</option>
+        <option value="Scotiabank">Scotiabank</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">N° comprobante / referencia (opcional)</label>
+      <input class="fi" id="mah-ref" type="text" placeholder="N° operación o referencia">
+    </div>
+    <div class="fg">
+      <label class="fl">Comprobante (imagen o PDF)</label>
+      <div class="upload-area" id="upload-area" onclick="g('file-input').click()">
+        <input type="file" id="file-input" accept="image/*,.pdf" onchange="archivoSeleccionado(this)">
+        <div class="ua-icon">📎</div>
+        <div class="ua-title">Adjuntar comprobante</div>
+        <div class="ua-sub">JPG · PNG · PDF · máx 10 MB</div>
+      </div>
+      <div id="file-preview" style="display:none"></div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-ghost" onclick="closeMo('mo-add-hist')">Cancelar</button>
+      <button class="btn btn-red" onclick="guardarPagoManual()">Guardar pago →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ver comprobante -->
+<div class="mo-ov" id="mo-comp">
+  <div class="mo">
+    <div class="mo-pill"></div>
+    <h2 id="mcomp-title">Comprobante</h2>
+    <div class="mo-sub" id="mcomp-sub">—</div>
+    <div id="mcomp-body"></div>
+    <div class="mo-foot">
+      <button class="btn btn-ghost" onclick="closeMo('mo-comp')">Cerrar</button>
+      <button class="btn btn-red btn-sm" id="mcomp-delete" onclick="eliminarPago(window._compIdx);closeMo('mo-comp')">🗑 Eliminar pago</button>
+    </div>
+  </div>
+</div>
+
+<!-- Editar pago -->
+<div class="mo-ov" id="mo-edit-pay">
+  <div class="mo">
+    <div class="mo-pill"></div>
+    <h2>Editar pago</h2>
+    <div class="mo-sub" id="mep-sub">—</div>
+    <div class="fg">
+      <label class="fl">Período</label>
+      <select class="fi" id="mep-periodo"></select>
+    </div>
+    <div class="fi-row">
+      <div class="fg"><label class="fl">Monto neto pagado</label><input class="fi editable" id="mep-monto" type="number" step="1"></div>
+      <div class="fg"><label class="fl">Cuota del mes</label><input class="fi editable" id="mep-cuota" type="number" step="1"></div>
+    </div>
+    <div class="fg"><label class="fl">Fecha</label><input class="fi editable" id="mep-fecha" type="date"></div>
+    <div class="fg"><label class="fl">Medio</label><input class="fi editable" id="mep-medio" type="text"></div>
+    <div class="fg"><label class="fl">Referencia</label><input class="fi editable" id="mep-ref" type="text"></div>
+    <div class="mo-foot">
+      <button class="btn btn-ghost" onclick="closeMo('mo-edit-pay')">Cancelar</button>
+      <button class="btn btn-red" onclick="guardarEdicionPago()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Agregar causa -->
+<div class="mo-ov" id="mo-causa">
+  <div class="mo">
+    <div class="mo-pill"></div>
+    <h2>Agregar causa</h2>
+    <div class="mo-sub">Registra causas de familia, escritos y documentos asociados.</div>
+    <div class="fg"><label class="fl">RIT / RUC</label><input class="fi editable" id="case-rit" placeholder="Ej: C-1234-2026"></div>
+    <div class="fg"><label class="fl">Tribunal</label><input class="fi editable" id="case-tribunal" placeholder="Juzgado de Familia"></div>
+    <div class="fg"><label class="fl">Materia</label><input class="fi editable" id="case-materia" placeholder="Alimentos, cumplimiento, rebaja, etc."></div>
+    <div class="fg"><label class="fl">Estado</label><input class="fi editable" id="case-estado" placeholder="En tramitación"></div>
+    <div class="fg"><label class="fl">Resumen</label><textarea class="fi editable" id="case-resumen" rows="4" placeholder="Resumen general de la causa"></textarea></div>
+    <div class="fg"><label class="fl">Cantidad de escritos</label><input class="fi editable" id="case-escritos" type="number" step="1" min="0" value="0"></div>
+    <div class="fg"><label class="fl">Documento principal</label><input class="fi" id="case-file" type="file" accept=".pdf,image/*,.doc,.docx"></div>
+    <div class="mo-foot">
+      <button class="btn btn-ghost" onclick="closeMo('mo-causa')">Cancelar</button>
+      <button class="btn btn-red" onclick="guardarCausa()">Guardar causa</button>
+    </div>
+  </div>
+</div>
+
+<!-- Guía OJV -->
+<div class="mo-ov" id="mo-ojv-guide">
+  <div class="mo">
+    <div class="mo-pill"></div>
+    <h2>Sincronizar causas</h2>
+    <div class="mo-sub">Flujo de pruebas con Oficina Judicial Virtual y ClaveÚnica.</div>
+    <div style="background:var(--bg2);border-radius:12px;padding:14px;font-size:13px;line-height:1.55">
+      <div class="kv"><span class="kv-k">1</span><span class="kv-v" style="text-align:left">Entrar a Oficina Judicial Virtual desde esta app.</span></div>
+      <div class="kv"><span class="kv-k">2</span><span class="kv-v" style="text-align:left">Iniciar sesión con ClaveÚnica en el sitio oficial.</span></div>
+      <div class="kv"><span class="kv-k">3</span><span class="kv-v" style="text-align:left">Ir a “Mis causas” o “Consulta unificada”.</span></div>
+      <div class="kv"><span class="kv-k">4</span><span class="kv-v" style="text-align:left">Filtrar por Familia, todos los estados y el rango de fechas necesario.</span></div>
+      <div class="kv"><span class="kv-k">5</span><span class="kv-v" style="text-align:left">Abrir cada causa, descargar escritos/resoluciones y guardarlos en la carpeta local de la app.</span></div>
+      <div class="kv"><span class="kv-k">6</span><span class="kv-v" style="text-align:left">La app leerá esos documentos, los ordenará por causa y generará resumen general y particular.</span></div>
+    </div>
+    <div class="alert alert-amber mt-12">
+      <div class="ai">!</div>
+      <div>En esta etapa de pruebas la descarga automática completa queda como módulo de escritorio. La ClaveÚnica se ingresa solo en el sitio oficial; AlimenTab no la guarda.</div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-ghost" onclick="closeMo('mo-ojv-guide')">Cerrar</button>
+      <button class="btn btn-red" onclick="closeMo('mo-ojv-guide');abrirOJV()">Entrar a OJV</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notificaciones -->
+<div class="mo-ov" id="mo-notif">
+  <div class="mo">
+    <div class="mo-pill"></div>
+    <h2>Notificaciones</h2>
+    <div class="mo-sub" id="mn-fecha">—</div>
+    <div id="mn-list"></div>
+    <div class="mo-foot"><button class="btn btn-ghost" onclick="closeMo('mo-notif')">Cerrar</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════
+// CONSTANTES Y COMISIONES
+// ══════════════════════════════
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const SM    = 539000;
+const SM_FUENTE = 'DT · vigente desde ene 2026';
+const PENSION_UTM_DESDE = '2026-03';
+
+// Comisiones por medio (% sobre el monto de pensión)
+const COMISIONES = {
+  khipu:     { pct: 1.5,  label: 'Khipu ~1,5%' },
+  webpay:    { pct: 1.9,  label: 'Webpay ~1,9%' },
+  visa:      { pct: 1.9,  label: 'Tarjeta ~1,9%' },
+  mc:        { pct: 1.9,  label: 'Tarjeta ~1,9%' },
+  transfer:  { pct: 0,    label: 'Sin comisión' },
+};
+
+// Medios de pago disponibles
+const MEDIOS_DEF = [
+  { id:'transfer', nombre:'Transferencia bancaria', det:'Desde tu banco · directo · sin comisión', logo:'tf', free:true },
+  { id:'khipu',    nombre:'Khipu',                  det:'Transferencia guiada · ~1,5% comisión',   logo:'kh', free:false },
+  { id:'webpay',   nombre:'Webpay Plus',             det:'Débito o crédito · 1 cuota · ~1,9%',     logo:'tbk',free:false },
+  { id:'visa',     nombre:'Visa',                    det:'Tarjeta crédito · 1 cuota · ~1,9%',      logo:'vs', free:false },
+  { id:'mc',       nombre:'Mastercard',              det:'Tarjeta crédito · 1 cuota · ~1,9%',      logo:'mc', free:false },
+];
+
+const BANCOS_ORIGEN = [
+  { id:'bancoestado', nombre:'BancoEstado', url:'https://www.bancoestado.cl/' },
+  { id:'bchile', nombre:'Banco de Chile', url:'https://www.bancochile.cl/' },
+  { id:'santander', nombre:'Santander', url:'https://banco.santander.cl/personas/browser' },
+  { id:'bci', nombre:'BCI', url:'https://www.bci.cl/personas' },
+  { id:'scotiabank', nombre:'Scotiabank', url:'https://www.scotiabankchile.cl/' },
+  { id:'itau', nombre:'Banco Itaú', url:'https://banco.itau.cl/wps/portal/olb' },
+  { id:'security', nombre:'Banco Security', url:'https://personas.bancosecurity.cl/' },
+  { id:'falabella', nombre:'Banco Falabella', url:'https://www.bancofalabella.cl/' },
+];
+
+const OJV_URL = 'https://oficinajudicialvirtual.poderjudicial.cl/';
+
+// ══════════════════════════════
+// ESTADO GLOBAL
+// ══════════════════════════════
+let E = {
+  utm: null, uf: null, ipc: null, dolar: null, euro: null,
+  montoClp: null, periodo: null,
+  medioSel: 'transfer',
+  pagos:  JSON.parse(localStorage.getItem('at_pagos')  || '[]'),
+  causas: JSON.parse(localStorage.getItem('at_causas') || '[]'),
+  cloud: JSON.parse(localStorage.getItem('at_cloud') || '{}'),
+  config: JSON.parse(localStorage.getItem('at_config') || JSON.stringify({
+    monto: 21.1108, unidad: 'UTM', reajuste: 'Semestral', idxRej: 'IPC',
+    vencDia: 5, receptora: 'María José Martino Baldwin',
+    rutRec: '15.636.887-3', banco: 'BancoEstado',
+    tipoCta: 'Ahorro a la vista', cuenta: '33360288990',
+    benef: 'Gracia y Lukas Harseim Martino',
+    emailYo: 'erich@harseim.com', emailRec: '',
+    doc: 'Acuerdo Completo y Suficiente Ley 19.947',
+    escritura: 'Rep. N°11.391-2026 · 03/03/2026',
+    notaria: 'M. Soledad Lascar Merino · 38° Stgo',
+  })),
+};
+
+// ══════════════════════════════
+// HELPERS
+// ══════════════════════════════
+const g    = id => document.getElementById(id);
+const st   = (id,v) => { const e=g(id); if(e) e.textContent=v; };
+const fclp = n => '$'+Math.round(n).toLocaleString('es-CL');
+const fn   = (n,d=2) => n!=null ? Number(n).toLocaleString('es-CL',{minimumFractionDigits:d,maximumFractionDigits:d}) : '—';
+const fUnidad = n => Number(n).toLocaleString('es-CL',{minimumFractionDigits:4,maximumFractionDigits:4});
+const mes  = iso => { const d=new Date(iso); return MESES[d.getUTCMonth()]+' '+d.getUTCFullYear(); };
+const mesCorto = iso => { const d=new Date(iso); return MESES[d.getUTCMonth()].substring(0,3)+' '+d.getUTCFullYear(); };
+const fch  = iso => new Date(iso).toLocaleDateString('es-CL');
+const periodoKey = periodo => {
+  if(!periodo) return '';
+  const p = periodo.toLowerCase().trim();
+  const y = (p.match(/\d{4}/)||[''])[0];
+  const m = MESES.findIndex(x=>p.includes(x));
+  return y && m >= 0 ? `${y}-${String(m+1).padStart(2,'0')}` : p;
+};
+const periodoActual = () => E.periodo || mes(new Date().toISOString());
+const unidadPeriodo = periodo => periodoKey(periodo) && periodoKey(periodo) < PENSION_UTM_DESDE ? 'UF' : 'UTM';
+const pagoNeto = p => Math.round(Number(p.neto ?? p.monto ?? 0));
+const cuotaPago = p => Math.round(Number(p.montoCuota ?? E.montoClp ?? calcNeto(p.periodo) ?? p.neto ?? p.monto ?? 0));
+
+function pagosPeriodo(periodo=periodoActual()) {
+  const key = periodoKey(periodo);
+  return E.pagos.filter(p=>periodoKey(p.periodo)===key);
+}
+
+function saldoPeriodo(periodo=periodoActual(), cuota=calcNeto(periodo)||E.montoClp||0) {
+  const pagado = pagosPeriodo(periodo).reduce((s,p)=>s+pagoNeto(p),0);
+  return { cuota:Math.round(cuota), pagado, saldo:Math.max(0, Math.round(cuota)-pagado) };
+}
+
+function resumenAnual(year=new Date().getFullYear()) {
+  const months = Array.from({length:12},(_,i)=>`${MESES[i]} ${year}`);
+  const cuotaBase = periodo => calcNeto(periodo) || E.montoClp || 0;
+  const rows = months.map(periodo=>{
+    const registrados = pagosPeriodo(periodo);
+    const cuota = registrados.find(p=>p.montoCuota)?.montoCuota || cuotaBase(periodo);
+    const pagado = registrados.reduce((s,p)=>s+pagoNeto(p),0);
+    return { periodo, cuota:Math.round(cuota), pagado, saldo:Math.max(0, Math.round(cuota)-pagado) };
+  });
+  return {
+    rows,
+    pagado: rows.reduce((s,r)=>s+r.pagado,0),
+    saldo: rows.reduce((s,r)=>s+r.saldo,0),
+  };
+}
+
+// Calcular monto neto según unidad e indicadores
+function calcNeto(periodo=periodoActual()) {
+  const c = E.config;
+  const unidad = unidadPeriodo(periodo);
+  if (unidad === 'UTM' && E.utm)  return Math.round(c.monto * E.utm.valor);
+  if (unidad === 'UF'  && E.uf)   return Math.round(c.monto * E.uf.valor);
+  if (c.unidad === 'SM')             return Math.round(c.monto * SM);
+  if (c.unidad === 'CLP')            return Math.round(c.monto);
+  return null;
+}
+
+// Calcular total con comisión
+function calcTotal(neto, medioId) {
+  const com = COMISIONES[medioId] || { pct:0 };
+  const fee = Math.ceil(neto * com.pct / 100);
+  return { neto, fee, total: neto + fee, pct: com.pct };
+}
+
+// ══════════════════════════════
+// CARGAR INDICADORES (directo a mindicador.cl)
+// ══════════════════════════════
+async function getInd(codigo) {
+  const r = await fetch(`https://mindicador.cl/api/${codigo}`);
+  const d = await r.json();
+  const s = d.serie || [];
+  return { valor: s[0]?.valor??null, fecha: s[0]?.fecha??null, serie: s.slice(0,24) };
+}
+
+async function cargar() {
+  try {
+    const [utm, uf, ipc, dolar, euro] = await Promise.all([
+      getInd('utm'), getInd('uf'), getInd('ipc'), getInd('dolar'), getInd('euro')
+    ]);
+    E.utm=utm; E.uf=uf; E.ipc=ipc; E.dolar=dolar; E.euro=euro;
+    E.montoClp = calcNeto();
+    E.periodo  = mes(utm.fecha);
+    pintarUI();
+  } catch(err) {
+    const ahora = new Date();
+    E.utm = { valor:68770, fecha:ahora.toISOString(), serie:[] };
+    E.montoClp = calcNeto();
+    E.periodo  = MESES[ahora.getMonth()]+' '+ahora.getFullYear();
+    pintarUI();
+    toast('⚠ Sin conexión · UTM local $68.770');
+  }
+}
+
+function pintarUI() {
+  const { utm, uf, ipc, dolar, euro } = E;
+  const c = E.config;
+  const neto = calcNeto() || 0;
+  const { total, fee, pct } = calcTotal(neto, E.medioSel);
+  const m = mes(utm.fecha);
+
+  // ── INICIO ──
+  st('h-mes',     m);
+  st('h-monto',   Math.round(neto).toLocaleString('es-CL'));
+  st('h-utm',     '$'+utm.valor.toLocaleString('es-CL'));
+  st('h-utm-mes', m);
+  st('i-utm',     utm.valor.toLocaleString('es-CL'));
+  st('i-utm-f',   'Pub. '+fch(utm.fecha)+' · SII');
+  st('i-sm',      SM.toLocaleString('es-CL'));
+  st('i-sm-f',    SM_FUENTE);
+  if(uf)  { st('i-uf',  fn(uf.valor,2));        st('i-uf-f',  fch(uf.fecha)); }
+  if(ipc) { st('i-ipc', ipc.valor.toFixed(1));  st('i-ipc-f', fch(ipc.fecha)+' · INE'); }
+  // Próximo reajuste
+  const pr = new Date(utm.fecha); pr.setMonth(pr.getMonth()+(c.reajuste==='Semestral'?6:12));
+  st('ini-prox-rej', MESES[pr.getUTCMonth()]+' '+pr.getUTCFullYear());
+  st('ini-monto-utm', `${fUnidad(c.monto)} UTM/mes desde marzo 2026`);
+  st('ini-reajuste',  `Sin reajuste · se paga a UTM del mes`);
+  st('ini-venc',      `Día ${c.vencDia} de cada mes`);
+  st('ini-banco',     c.banco);
+  st('ini-cuenta',    c.cuenta);
+
+  // ── PAGAR ──
+  st('pay-mes',     m);
+  st('pay-mes-utm', m);
+  st('pay-utm-val', '$'+utm.valor.toLocaleString('es-CL'));
+  st('pay-neto',    fclp(neto));
+  const saldo = saldoPeriodo(m, neto);
+  st('pay-pagado', fclp(saldo.pagado));
+  st('pay-saldo',  fclp(saldo.saldo));
+  const montoAhora = g('pay-monto-ahora');
+  if(montoAhora && (!montoAhora.value || Number(montoAhora.value) > saldo.saldo)) montoAhora.value = saldo.saldo;
+  actualizarPagoEditable();
+
+  // ── INDICADORES ──
+  st('d-utm',   utm.valor.toLocaleString('es-CL'));
+  st('d-utm-mes', m);
+  st('d-utm-f', 'Pub. '+fch(utm.fecha)+' · SII · mindicador.cl');
+  if(uf)    { st('d-uf', fn(uf.valor,2));   st('d-uf-f', fch(uf.fecha)+' · BC'); const dm=new Date(uf.fecha); st('d-uf-mes',MESES[dm.getUTCMonth()].substring(0,3)); }
+  if(ipc)   { st('d-ipc', ipc.valor.toFixed(1)); st('d-ipc-f', fch(ipc.fecha)+' · INE'); const dm=new Date(ipc.fecha); st('d-ipc-mes',MESES[dm.getUTCMonth()].substring(0,3)); }
+  if(dolar) { st('d-dolar', fn(dolar.valor,1)); st('d-dolar-f', fch(dolar.fecha)+' · BC'); }
+  if(euro)  { st('d-euro',  fn(euro.valor,1));  st('d-euro-f',  fch(euro.fecha)+' · BC'); }
+  st('d-sm', SM.toLocaleString('es-CL'));
+  st('d-sm-f', SM_FUENTE);
+  st('eq-utm', fclp(c.monto * utm.valor));
+  if(uf) st('eq-uf', fclp(c.monto * uf.valor));
+  pintarHistUTM(utm.serie);
+
+  // Notificaciones
+  pintarNotif();
+  renderBalancesInicio();
+  renderHist();
+  renderCausas();
+}
+
+function actualizarComision(neto) {
+  const { total, fee, pct } = calcTotal(neto, E.medioSel);
+  st('pay-total', fclp(total));
+  st('pay-btn-amt', fclp(total));
+  const cr = g('comision-row'), cn = g('comision-nota');
+  if(fee > 0) {
+    st('com-pct', pct.toFixed(1)); st('com-amt', fclp(fee));
+    cr.style.display='flex'; cn.style.display='block';
+  } else {
+    cr.style.display='none'; cn.style.display='none';
+  }
+}
+
+function montoPagoActual() {
+  const neto = calcNeto() || 0;
+  const saldo = saldoPeriodo(periodoActual(), neto).saldo;
+  const raw = Number(g('pay-monto-ahora')?.value || saldo);
+  return Math.max(0, Math.min(Math.round(raw), saldo));
+}
+
+function actualizarPagoEditable() {
+  const neto = calcNeto() || 0;
+  const saldo = saldoPeriodo(periodoActual(), neto).saldo;
+  const monto = montoPagoActual();
+  actualizarComision(monto);
+  const nota = g('pay-monto-nota');
+  if(nota) {
+    const queda = Math.max(0, saldo - monto);
+    nota.textContent = queda > 0
+      ? `Pago parcial: quedarán ${fclp(queda)} pendientes de este período.`
+      : 'Con este pago el período queda cubierto.';
+  }
+}
+
+// ── MÉTODOS DE PAGO (renderizar) ──
+function renderMedios() {
+  g('pm-list').innerHTML = MEDIOS_DEF.map(m => `
+    <label class="pm${m.free?' free':''}" id="pm-${m.id}" onclick="selPM('${m.id}',this)">
+      <input type="radio" name="pm" value="${m.id}" ${m.id===E.medioSel?'checked':''} style="accent-color:var(--red)">
+      <div class="pm-logo ${m.logo}">${m.logo==='tf'?'↗':m.logo==='kh'?'Kh':m.logo==='tbk'?'TBK':m.logo.toUpperCase()}</div>
+      <div>
+        <div class="pm-name">${m.nombre}</div>
+        <div class="pm-det">${m.det}</div>
+        <div class="pm-fee ${m.free?'fee-free':'fee-cost'}">${m.free?'✓ Sin comisión – pensión íntegra':'⚠ Comisión suma al total'}</div>
+      </div>
+    </label>`).join('');
+  document.querySelector(`#pm-${E.medioSel}`)?.classList.add('sel');
+}
+
+function selPM(id, lbl) {
+  E.medioSel = id;
+  document.querySelectorAll('.pm').forEach(m=>m.classList.remove('sel'));
+  lbl.classList.add('sel');
+  const neto = montoPagoActual()||0;
+  actualizarComision(neto);
+  // Si es transferencia, mostrar datos de cuenta
+  if(id==='transfer') mostrarDatosTransfer(neto);
+}
+
+function mostrarDatosTransfer(neto) {
+  const c = E.config;
+  st('tf-nombre', c.receptora);
+  st('tf-rut',    c.rutRec);
+  st('tf-banco',  c.banco);
+  st('tf-tipo',   c.tipoCta);
+  st('tf-cuenta', c.cuenta);
+  st('tf-monto',  fclp(neto));
+  const sel = g('tf-banco-origen');
+  if(sel && !sel.options.length) {
+    sel.innerHTML = BANCOS_ORIGEN.map(b=>`<option value="${b.id}">${b.nombre}</option>`).join('');
+  }
+  openMo('mo-transfer');
+}
+
+function datosTransferenciaTexto() {
+  const c = E.config;
+  return [
+    `Beneficiaria: ${c.receptora}`,
+    `RUT: ${c.rutRec}`,
+    `Banco destino: ${c.banco}`,
+    `Tipo de cuenta: ${c.tipoCta}`,
+    `N° cuenta: ${c.cuenta}`,
+    `Monto exacto: ${g('tf-monto')?.textContent || fclp(montoPagoActual())}`,
+    `Glosa: Pensión alimentos ${periodoActual()}`
+  ].join('\n');
+}
+
+async function copiarDatosTransferencia() {
+  try {
+    await navigator.clipboard.writeText(datosTransferenciaTexto());
+    toast('Datos de transferencia copiados');
+  } catch {
+    toast('No se pudo copiar automáticamente');
+  }
+}
+
+function abrirBancoSeleccionado() {
+  const id = g('tf-banco-origen')?.value;
+  const banco = BANCOS_ORIGEN.find(b=>b.id===id) || BANCOS_ORIGEN[0];
+  copiarDatosTransferencia();
+  window.open(banco.url, '_blank', 'noopener');
+  toast(`Abriendo ${banco.nombre} · verifica monto y destinatario`);
+}
+
+function abrirOJV() {
+  if(window.alimentabDesktop?.openOjvExternal) {
+    window.alimentabDesktop.openOjvExternal();
+    toast('Abriendo OJV en tu navegador normal');
+    return;
+  }
+  window.open(OJV_URL, '_blank', 'noopener');
+  toast('Abriendo Oficina Judicial Virtual · ingresa con ClaveÚnica');
+}
+
+function abrirOJVInterno() {
+  if(window.alimentabDesktop?.openOjvInternal) {
+    window.alimentabDesktop.openOjvInternal();
+    toast('Abriendo Oficina Judicial Virtual en ventana segura');
+    return;
+  }
+  window.open(OJV_URL, '_blank', 'noopener');
+  toast('Abriendo Oficina Judicial Virtual · ingresa con ClaveÚnica');
+}
+
+function abrirOJVExterno() {
+  if(window.alimentabDesktop?.openOjvExternal) {
+    window.alimentabDesktop.openOjvExternal();
+    toast('Abriendo OJV en tu navegador normal');
+    return;
+  }
+  window.open(OJV_URL, '_blank', 'noopener');
+}
+
+function autenticarYDescargarOJV() {
+  if(window.alimentabDesktop?.openOjvExternal) {
+    window.alimentabDesktop.openOjvExternal();
+    toast('Ingresa con ClaveÚnica en Edge y usa la extensión AlimenTab OJV');
+    return;
+  }
+  abrirOJV();
+}
+
+// ── HISTORIAL UTM ──
+function pintarHistUTM(serie) {
+  if(!serie||serie.length===0){ g('hist-utm').innerHTML='<div class="empty" style="padding:16px">Sin datos</div>'; return; }
+  g('hist-utm').innerHTML = serie.map(s=>{
+    const cuota = Math.round(E.config.monto * s.valor);
+    return `<div class="kv">
+      <span class="kv-k">${mes(s.fecha)}</span>
+      <span class="kv-v" style="text-align:right;line-height:1.5">
+        <span class="mono" style="font-size:10px;color:var(--ink3)">$${s.valor.toLocaleString('es-CL')} UTM</span><br>
+        <strong>${fclp(cuota)}</strong>
+      </span>
+    </div>`;
+  }).join('');
+}
+
+// ── NOTIFICACIONES ──
+function pintarNotif() {
+  if(!E.utm) return;
+  const c = E.config;
+  const pr = new Date(E.utm.fecha); pr.setMonth(pr.getMonth()+(c.reajuste==='Semestral'?6:12));
+  const neto = calcNeto()||0;
+  const notifs = [
+    { ico:'📅', t:`UTM ${mes(E.utm.fecha)}: $${E.utm.valor.toLocaleString('es-CL')}`, s:`Cuota desde marzo 2026: ${fclp(neto)} · se paga antes del día ${E.config.vencDia}` },
+    E.ipc ? { ico:'📊', t:`IPC ${mes(E.ipc.fecha)}: ${E.ipc.valor.toFixed(1)}%`, s:`Fuente INE · ${fch(E.ipc.fecha)}` } : null,
+    { ico:'🔄', t:'Pensión en UTM sin reajuste adicional', s:'Cada mes se recalcula con la UTM oficial del mismo mes de pago.' },
+  ].filter(Boolean);
+  st('mn-fecha','Al '+new Date().toLocaleDateString('es-CL'));
+  g('mn-list').innerHTML = notifs.map(n=>`
+    <div style="display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)">
+      <span style="font-size:20px">${n.ico}</span>
+      <div><div style="font-weight:500;font-size:14px;margin-bottom:2px">${n.t}</div><div style="font-size:12px;color:var(--ink2)">${n.s}</div></div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════
+// PAGO
+// ══════════════════════════════
+function iniciarPago() {
+  const neto = calcNeto();
+  if(!neto) { toast('Cargando datos, espera…'); return; }
+  const montoAhora = montoPagoActual();
+  if(montoAhora <= 0) { toast('Este período no tiene saldo pendiente'); return; }
+  const medio = MEDIOS_DEF.find(m=>m.id===E.medioSel);
+  const { total, fee, pct } = calcTotal(montoAhora, E.medioSel);
+
+  // Transferencia → mostrar datos sin modal confirm
+  if(E.medioSel==='transfer') { mostrarDatosTransfer(montoAhora); return; }
+
+  st('mc-sub','Cuota '+E.periodo);
+  st('mc-email-rec', E.config.receptora);
+  g('mc-det').innerHTML = `
+    <div class="kv"><span class="kv-k">Pensión neta del mes</span><span class="kv-v">${fclp(neto)}</span></div>
+    <div class="kv"><span class="kv-k">Monto a pagar ahora</span><span class="kv-v">${fclp(montoAhora)}</span></div>
+    ${fee>0?`<div class="kv"><span class="kv-k">Comisión ${medio.nombre} (${pct}%)</span><span class="kv-v amber">${fclp(fee)}</span></div>`:''}
+    <div class="kv"><span class="kv-k">Total a cobrar</span><span class="kv-v" style="font-family:'Fraunces',serif;font-size:22px;color:var(--red)">${fclp(total)}</span></div>
+    <div class="kv"><span class="kv-k">Medio</span><span class="kv-v">${medio.nombre}</span></div>
+    <div class="kv"><span class="kv-k">Destino</span><span class="kv-v mono" style="font-size:11px">${E.config.banco} ${E.config.cuenta}</span></div>`;
+  g('mc-ok').dataset.medio = E.medioSel;
+  window._payData = { medio, total, neto:montoAhora, montoCuota:neto, fee };
+  openMo('mo-confirm');
+}
+
+async function procesarPago() {
+  closeMo('mo-confirm');
+  const pay = window._payData || {};
+  const neto  = pay.neto || montoPagoActual();
+  const cuota = pay.montoCuota || calcNeto();
+  const { total, fee } = pay.total ? pay : calcTotal(neto, E.medioSel);
+  const medio = pay.medio || MEDIOS_DEF.find(m=>m.id===E.medioSel);
+  // Intentar Khipu si aplica
+  if(E.medioSel==='khipu') {
+    try {
+      const r = await fetch('http://localhost:3000/api/khipu/crear-cobro',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({monto:total,periodo:E.periodo}),
+        signal:AbortSignal.timeout(5000)
+      });
+      const d = await r.json();
+      if(d.ok&&d.paymentUrl) { window.open(d.paymentUrl,'_blank'); toast('Khipu abierto · autoriza en tu banco'); }
+    } catch {}
+  }
+  registrarPago(medio.nombre, total, neto, fee, null, cuota);
+}
+
+function registrarPago(medio, total, neto, fee, archivo, montoCuota) {
+  const pago = {
+    id: Date.now(),
+    periodo: E.periodo,
+    fecha: new Date().toLocaleString('es-CL'),
+    fechaISO: new Date().toISOString(),
+    monto: total, neto, fee, montoCuota:montoCuota||calcNeto(),
+    utm: E.utm?.valor, unidad: E.config.unidad, cantUnidad: E.config.monto,
+    medio, archivo: archivo || null,
+    ref: null,
+  };
+  E.pagos.unshift(pago);
+  guardarPagos();
+  renderHist();
+  toast('✅ Pago registrado · '+medio);
+  // Correo en background
+  enviarCorreo(pago);
+}
+
+async function enviarCorreo(pago) {
+  try {
+    await fetch('http://localhost:3000/api/correo/confirmar-pago',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ monto:pago.neto, periodo:pago.periodo,
+        valorBase:E.utm, unidad:pago.unidad, cantidadUnidad:pago.cantUnidad,
+        fechaPago:pago.fecha, medioPago:pago.medio, numeroOp:pago.ref }),
+      signal:AbortSignal.timeout(5000)
+    });
+  } catch {}
+}
+
+// ══════════════════════════════
+// HISTORIAL
+// ══════════════════════════════
+let _archivoActual = null; // base64 del archivo seleccionado
+
+function archivoSeleccionado(input) {
+  const file = input.files[0];
+  if(!file) return;
+  if(file.size > 10*1024*1024) { toast('Archivo demasiado grande · máx 10 MB'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    _archivoActual = { nombre: file.name, tipo: file.type, data: e.target.result };
+    g('file-preview').style.display = 'block';
+    g('file-preview').innerHTML = `
+      <div class="file-attached">
+        <span style="font-size:20px">${file.type.includes('pdf')?'📄':'🖼️'}</span>
+        <span class="fa-name">${file.name}</span>
+        <button class="fa-rm" onclick="quitarArchivo()">✕</button>
+      </div>`;
+    g('upload-area').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function quitarArchivo() {
+  _archivoActual = null;
+  g('file-preview').style.display = 'none';
+  g('upload-area').style.display = 'block';
+  g('file-input').value = '';
+}
+
+function poblarPeriodos() {
+  const sel = g('mah-periodo');
+  sel.innerHTML = '';
+  const hoy = new Date();
+  for(let i=0; i<24; i++) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth()-i, 1);
+    const val = MESES[d.getMonth()]+' '+d.getFullYear();
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = val;
+    sel.appendChild(opt);
+  }
+}
+
+function guardarPagoManual() {
+  const periodo = g('mah-periodo').value;
+  const montoRaw = parseFloat(g('mah-monto').value);
+  const utmRaw   = parseFloat(g('mah-utm').value);
+  const fechaRaw = g('mah-fecha').value;
+  const medio    = g('mah-medio').value;
+  const bancoOrig= g('mah-banco-orig').value;
+  const ref      = g('mah-ref').value;
+
+  if(!montoRaw||!periodo) { toast('Completa el período y el monto'); return; }
+
+  const pago = {
+    id: Date.now(),
+    periodo, fecha: fechaRaw||new Date().toLocaleDateString('es-CL'),
+    fechaISO: fechaRaw ? new Date(fechaRaw).toISOString() : new Date().toISOString(),
+    monto: Math.round(montoRaw), neto: Math.round(montoRaw), fee: 0, montoCuota: calcNeto() || Math.round(montoRaw),
+    utm: utmRaw||null, unidad: E.config.unidad, cantUnidad: E.config.monto,
+    medio: medio+(bancoOrig?' · '+bancoOrig:''),
+    archivo: _archivoActual, ref: ref||null,
+    manual: true,
+  };
+  E.pagos.unshift(pago);
+  E.pagos.sort((a,b)=>new Date(b.fechaISO)-new Date(a.fechaISO));
+  guardarPagos();
+  renderHist();
+  closeMo('mo-add-hist');
+  // Limpiar form
+  g('mah-monto').value=''; g('mah-utm').value=''; g('mah-fecha').value=''; g('mah-ref').value='';
+  quitarArchivo();
+  toast('✅ Pago registrado con comprobante');
+}
+
+function guardarPagos() {
+  // Guardar sin el data del archivo (demasiado grande para localStorage)
+  // Guardamos referencia al nombre solamente
+  const sinData = E.pagos.map(p=>({
+    ...p,
+    archivo: p.archivo ? { nombre:p.archivo.nombre, tipo:p.archivo.tipo, data:p.archivo.data } : null
+  }));
+  try {
+    localStorage.setItem('at_pagos', JSON.stringify(sinData));
+  } catch(e) {
+    // Si supera el límite de localStorage (fotos grandes), guardar sin archivos
+    localStorage.setItem('at_pagos', JSON.stringify(sinData.map(p=>({...p,archivo:null}))));
+    toast('⚠ Comprobante no guardado · archivo muy grande para memoria local');
+  }
+  marcarNubePendiente();
+}
+
+function verComprobante(idx) {
+  const p = E.pagos[idx];
+  if(!p) return;
+  window._compIdx = idx;
+  st('mcomp-title', 'Comprobante');
+  const del = g('mcomp-delete'); if(del) del.style.display = '';
+  st('mcomp-sub', p.periodo+' · '+p.medio);
+  let body = `
+    <div style="background:var(--bg2);border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px">
+      <div class="kv"><span class="kv-k">Período</span><span class="kv-v">${p.periodo}</span></div>
+      <div class="kv"><span class="kv-k">Monto</span><span class="kv-v red" style="font-family:'Fraunces',serif;font-size:18px">${fclp(p.monto)}</span></div>
+      ${p.utm?`<div class="kv"><span class="kv-k">UTM del mes</span><span class="kv-v mono">$${p.utm.toLocaleString('es-CL')}</span></div>`:''}
+      <div class="kv"><span class="kv-k">Fecha</span><span class="kv-v">${p.fecha}</span></div>
+      <div class="kv"><span class="kv-k">Medio</span><span class="kv-v">${p.medio}</span></div>
+      ${p.ref?`<div class="kv"><span class="kv-k">N° ref.</span><span class="kv-v mono">${p.ref}</span></div>`:''}
+    </div>`;
+  if(p.archivo) {
+    if(p.archivo.tipo.includes('image')) {
+      body += `<img src="${p.archivo.data}" style="width:100%;border-radius:10px;margin-bottom:10px" alt="comprobante">`;
+    } else if(p.archivo.tipo.includes('pdf')) {
+      body += `<div style="background:var(--blu-bg);border-radius:10px;padding:14px;text-align:center;margin-bottom:10px">
+        <div style="font-size:28px;margin-bottom:6px">📄</div>
+        <div style="font-weight:500">${p.archivo.nombre}</div>
+        <a href="${p.archivo.data}" download="${p.archivo.nombre}" style="color:var(--blue);font-size:13px">⬇ Descargar PDF</a>
+      </div>`;
+    }
+  } else {
+    body += `<div class="alert alert-amber"><div class="ai">📎</div><div>Sin comprobante adjunto</div></div>`;
+  }
+  g('mcomp-body').innerHTML = body;
+  openMo('mo-comp');
+}
+
+function eliminarPago(idx) {
+  if(!confirm('¿Eliminar este pago del historial?')) return;
+  E.pagos.splice(idx,1);
+  guardarPagos();
+  renderHist();
+  toast('Pago eliminado');
+}
+
+function renderHist() {
+  const p = E.pagos;
+  // Preview inicio
+  g('prev-pagos').innerHTML = p.length===0
+    ? '<div class="empty">Sin pagos aún</div>'
+    : p.slice(0,3).map(x=>`<div class="kv"><span class="kv-k">${x.periodo}</span><span class="kv-v green">${fclp(x.monto)}</span></div>`).join('');
+  // Stats
+  const tot = p.reduce((s,x)=>s+x.monto,0);
+  st('hn', p.length);
+  st('htotal', Math.round(tot).toLocaleString('es-CL'));
+  // Lista
+  g('hist-list').innerHTML = p.length===0
+    ? '<div class="empty">Sin pagos registrados.<br>Registra un pago histórico o realiza uno nuevo.</div>'
+    : p.map((x,i)=>`
+      <div class="hi">
+        <div class="hi-top">
+          <div class="hi-per">${x.periodo}</div>
+          <div class="hi-amt">${fclp(x.monto)}</div>
+        </div>
+        <div class="hi-bot">
+          <span class="hi-calc">${x.cantUnidad||21.1108} ${x.unidad||'UTM'}${x.utm?' × $'+x.utm.toLocaleString('es-CL'):''}</span>
+          <span class="badge bg-green">✓ ${x.manual?'Manual':'App'}</span>
+        </div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:4px">${x.fecha} · ${x.medio}</div>
+        <div class="hi-actions">
+          <button class="btn btn-ghost btn-sm" onclick="verComprobante(${i})">
+            ${x.archivo?'📎 Ver comprobante':'📋 Ver detalle'}
+          </button>
+        </div>
+      </div>`).join('');
+}
+
+// ══════════════════════════════
+// CONFIGURACIÓN
+// ══════════════════════════════
+function poblarFiltrosHist() {
+  const ys = g('hist-year'), ms = g('hist-month');
+  if(ys && !ys.options.length) {
+    const actual = new Date().getFullYear();
+    const years = new Set([actual, ...E.pagos.map(p=>(periodoKey(p.periodo).match(/^\d{4}/)||[])[0]).filter(Boolean)]);
+    ys.innerHTML = [...years].sort((a,b)=>b-a).map(y=>`<option value="${y}">${y}</option>`).join('');
+  }
+  if(ms && ms.options.length <= 1) {
+    ms.innerHTML = '<option value="">Todos los meses</option>'+MESES.map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('');
+  }
+}
+
+function renderBalancesInicio() {
+  const anual = resumenAnual(new Date().getFullYear());
+  const pendientes = anual.rows.filter(r=>r.saldo>0 && periodoKey(r.periodo)<=periodoKey(periodoActual())).slice(0,4);
+  st('mora-badge', pendientes.length ? `${pendientes.length} pendiente${pendientes.length>1?'s':''}` : 'Al día');
+  const badge = g('mora-badge');
+  if(badge) badge.className = 'badge '+(pendientes.length?'bg-red':'bg-green');
+  g('mora-list').innerHTML = pendientes.length
+    ? pendientes.map(r=>`<div class="kv"><span class="kv-k">${r.periodo}</span><span class="kv-v red">${fclp(r.saldo)}</span></div>`).join('')
+    : '<div class="empty" style="padding:12px">Sin saldos pendientes</div>';
+}
+
+function renderHist() {
+  poblarFiltrosHist();
+  const y = g('hist-year')?.value || String(new Date().getFullYear());
+  const m = g('hist-month')?.value || '';
+  const p = E.pagos.filter(x=>{
+    const key = periodoKey(x.periodo);
+    return (!y || key.startsWith(y+'-')) && (!m || key.endsWith('-'+m));
+  });
+  g('prev-pagos').innerHTML = E.pagos.length===0
+    ? '<div class="empty">Sin pagos aún</div>'
+    : E.pagos.slice(0,3).map(x=>`<div class="kv"><span class="kv-k">${x.periodo}</span><span class="kv-v green">${fclp(pagoNeto(x))}</span></div>`).join('');
+  const tot = E.pagos.reduce((s,x)=>s+pagoNeto(x),0);
+  st('hn', E.pagos.length);
+  st('htotal', Math.round(tot).toLocaleString('es-CL'));
+  const anual = resumenAnual(Number(y)||new Date().getFullYear());
+  st('hy-paid', fclp(anual.pagado));
+  st('hy-due', fclp(anual.saldo));
+  g('hist-list').innerHTML = p.length===0
+    ? '<div class="empty">Sin pagos registrados para este filtro.</div>'
+    : p.map(x=>{
+      const i = E.pagos.findIndex(pago=>pago.id===x.id);
+      const saldo = Math.max(0, cuotaPago(x)-pagoNeto(x));
+      return `
+      <div class="hi">
+        <div class="hi-top">
+          <div class="hi-per">${x.periodo}</div>
+          <div class="hi-amt">${fclp(pagoNeto(x))}</div>
+        </div>
+        <div class="hi-bot">
+          <span class="hi-calc">Cuota ${fclp(cuotaPago(x))}${saldo?` · saldo ${fclp(saldo)}`:''}</span>
+          <span class="badge ${saldo?'bg-amber':'bg-green'}">${saldo?'Parcial':'Pagado'}</span>
+        </div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:4px">${x.fecha} · ${x.medio}</div>
+        <div class="hi-actions">
+          <button class="btn btn-ghost btn-sm" onclick="verComprobante(${i})">${x.archivo?'Ver comprobante':'Ver detalle'}</button>
+          <button class="btn btn-ghost btn-sm" onclick="editarPago(${i})">Editar</button>
+          <button class="btn btn-ghost btn-sm" onclick="eliminarPago(${i})">Eliminar</button>
+        </div>
+      </div>`}).join('');
+}
+
+function editarPago(idx) {
+  const p = E.pagos[idx]; if(!p) return;
+  window._editPagoIdx = idx;
+  const sel = g('mep-periodo');
+  sel.innerHTML = '';
+  const hoy = new Date();
+  for(let i=0;i<36;i++){
+    const d = new Date(hoy.getFullYear(), hoy.getMonth()-i, 1);
+    const val = MESES[d.getMonth()]+' '+d.getFullYear();
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = val; if(val===p.periodo) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  st('mep-sub', p.periodo+' · '+p.medio);
+  g('mep-monto').value = pagoNeto(p);
+  g('mep-cuota').value = cuotaPago(p);
+  g('mep-fecha').value = (p.fechaISO||'').slice(0,10);
+  g('mep-medio').value = p.medio || '';
+  g('mep-ref').value = p.ref || '';
+  openMo('mo-edit-pay');
+}
+
+function guardarEdicionPago() {
+  const idx = window._editPagoIdx;
+  const p = E.pagos[idx]; if(!p) return;
+  const neto = Math.round(Number(g('mep-monto').value||0));
+  const cuota = Math.round(Number(g('mep-cuota').value||neto));
+  p.periodo = g('mep-periodo').value;
+  p.neto = neto;
+  p.monto = neto + Math.round(Number(p.fee||0));
+  p.montoCuota = cuota;
+  p.fechaISO = g('mep-fecha').value ? new Date(g('mep-fecha').value).toISOString() : p.fechaISO;
+  p.fecha = g('mep-fecha').value ? new Date(g('mep-fecha').value).toLocaleDateString('es-CL') : p.fecha;
+  p.medio = g('mep-medio').value;
+  p.ref = g('mep-ref').value;
+  guardarPagos();
+  closeMo('mo-edit-pay');
+  renderHist();
+  renderBalancesInicio();
+  toast('Pago actualizado');
+}
+
+function guardarCausas() {
+  localStorage.setItem('at_causas', JSON.stringify(E.causas));
+  marcarNubePendiente();
+}
+
+function guardarCausa() {
+  const file = g('case-file')?.files?.[0];
+  const causa = {
+    id: Date.now(),
+    rit: g('case-rit').value.trim(),
+    tribunal: g('case-tribunal').value.trim(),
+    materia: g('case-materia').value.trim(),
+    estado: g('case-estado').value.trim() || 'Sin estado',
+    resumen: g('case-resumen').value.trim(),
+    escritos: Number(g('case-escritos').value||0),
+    actualizado: new Date().toLocaleDateString('es-CL'),
+    documento: file ? { nombre:file.name, tipo:file.type, size:file.size } : null,
+  };
+  if(!causa.rit && !causa.materia) { toast('Agrega al menos RIT/RUC o materia'); return; }
+  E.causas.unshift(causa);
+  guardarCausas();
+  ['case-rit','case-tribunal','case-materia','case-estado','case-resumen','case-escritos'].forEach(id=>{ const e=g(id); if(e) e.value = id==='case-escritos' ? '0' : ''; });
+  if(g('case-file')) g('case-file').value = '';
+  closeMo('mo-causa');
+  renderCausas();
+  toast('Causa registrada');
+}
+
+function eliminarCausa(idx) {
+  if(!confirm('¿Eliminar esta causa del registro local?')) return;
+  E.causas.splice(idx,1);
+  guardarCausas();
+  renderCausas();
+  toast('Causa eliminada');
+}
+
+function renderCausas() {
+  const totalDocs = E.causas.reduce((s,c)=>s+Number(c.escritos||0),0);
+  st('case-n', E.causas.length);
+  st('case-docs', totalDocs);
+  st('case-upd', E.causas[0]?.actualizado || '—');
+  const box = g('case-list');
+  if(!box) return;
+  box.innerHTML = E.causas.length===0
+    ? '<div class="empty">Sin causas registradas aún</div>'
+    : E.causas.map((c,i)=>`
+      <div class="case-item">
+        <div class="case-top">
+          <div>
+            <div class="case-title">${c.materia || 'Causa de familia'}</div>
+            <div class="case-meta">${c.rit || 'Sin RIT/RUC'} · ${c.tribunal || 'Tribunal no indicado'}</div>
+          </div>
+          <span class="badge bg-blue">${c.estado}</span>
+        </div>
+        <div class="case-meta">${resumenCausaMejorado(c)}</div>
+        <div class="doc-row">
+          <span>${(c.documentos?.length)||c.escritos||0} documento(s) · ${c.documentos?.length ? c.documentos.map(d=>`${d.folio?'Folio '+d.folio+': ':''}${d.tramite||d.nombre}`).slice(0,3).join(', ') : (c.documento?c.documento.nombre:'sin documento adjunto')}</span>
+          <span>
+            ${c.documentos?.length ? `<button class="edit-btn" onclick="verDocsCausa(${i})">Ver docs</button>` : ''}
+            <button class="edit-btn" onclick="eliminarCausa(${i})">Eliminar</button>
+          </span>
+        </div>
+      </div>`).join('');
+}
+
+function verDocsCausa(idx) {
+  const c = E.causas[idx]; if(!c) return;
+  const docs = c.documentos || [];
+  const body = docs.length
+    ? docs.map((d,i)=>`<div class="kv"><span class="kv-k">${d.folio?'Folio '+d.folio:d.tramite||'Doc'}</span><span class="kv-v"><button class="edit-btn" onclick="abrirDocumentoLocal(${idx},${i})">${d.nombre}</button></span></div>`).join('')
+    : '<div class="empty">Sin documentos asociados</div>';
+  st('mcomp-title', 'Documentos');
+  st('mcomp-sub', c.rit || 'Causa');
+  const del = g('mcomp-delete'); if(del) del.style.display = 'none';
+  g('mcomp-body').innerHTML = `<div class="case-meta mb-12">${resumenCausaMejorado(c)}</div>${body}`;
+  openMo('mo-comp');
+}
+
+function abrirDocumentoLocal(cidx, didx) {
+  const d = E.causas[cidx]?.documentos?.[didx];
+  if(d?.path && window.alimentabDesktop?.openDocument) window.alimentabDesktop.openDocument(d.path);
+  else toast('Este documento no tiene ruta local guardada');
+}
+
+function resumenCausaSimple(c) {
+  if(c.resumen && c.resumen !== 'Causa creada desde documentos descargados de OJV.') return c.resumen;
+  const docs = c.documentos || [];
+  const escritos = docs.filter(d=>/escrito/i.test(d.tramite||d.nombre));
+  const resoluciones = docs.filter(d=>/resoluci/i.test(d.tramite||d.nombre));
+  const actuaciones = docs.filter(d=>/actuaci/i.test(d.tramite||d.nombre));
+  const inicio = c.rit
+    ? `Esta causa (${c.rit}) corresponde a materia de familia${c.tribunal?` en ${c.tribunal}`:''}.`
+    : 'Esta es una causa de familia registrada en la app.';
+  const camino = docs.length
+    ? `En el expediente hay ${docs.length} documento(s): ${escritos.length} escrito(s), ${resoluciones.length} resolución(es) y ${actuaciones.length} actuación(es).`
+    : 'Aún no hay documentos asociados para reconstruir el desarrollo.';
+  const descs = docs.map(d=>d.nombre||'').join(' ').toLowerCase();
+  let cierre = c.estado ? `Estado actual: ${c.estado}.` : 'Estado actual no informado.';
+  if(/sentencia|dictaci[oó]n de sentencia/i.test(descs+c.estado)) cierre = 'La causa registra sentencia o resolución final asociada.';
+  else if(/concluido|terminada|concluida/i.test(c.estado||'')) cierre = 'La causa aparece concluida/terminada en OJV.';
+  else if(/cumplimiento/i.test(descs+c.resumen)) cierre = 'La causa tiene movimientos de cumplimiento, es decir, seguimiento o exigencia de lo resuelto.';
+  return `${inicio} ${camino} ${cierre}`;
+}
+
+function resumenCausaMejorado(c) {
+  const docs = c.documentos || [];
+  const texto = normalizarResumen([
+    c.resumen,
+    c.texto,
+    c.materia,
+    c.estado,
+    ...docs.map(d=>[d.nombre,d.tramite,d.extracto].filter(Boolean).join(' '))
+  ].filter(Boolean).join(' '));
+
+  const tipos = {
+    escritos: docs.filter(d=>/escrito/i.test(d.tramite||d.nombre)).length,
+    resoluciones: docs.filter(d=>/resoluci|sentencia/i.test(d.tramite||d.nombre)).length,
+    actuaciones: docs.filter(d=>/actuaci|certificado|oficio/i.test(d.tramite||d.nombre)).length
+  };
+
+  const materias = [];
+  if(/alimento|pension aliment|alimentaria/.test(texto)) materias.push('alimentos o pension de alimentos');
+  if(/cumplimiento|liquidacion|deuda|adeud|apremio|retencion/.test(texto)) materias.push('cumplimiento y cobro');
+  if(/aumento|rebaja|cese|modificacion/.test(texto)) materias.push('modificacion de pension');
+  if(/cuidado personal|relacion directa|visita|corresponsabilidad/.test(texto)) materias.push('cuidado personal o relacion directa');
+  if(!materias.length && c.materia && !/^familia$/i.test(String(c.materia))) materias.push(c.materia);
+
+  const desarrollo = [];
+  if(/demanda|ingreso demanda|solicitud/.test(texto)) desarrollo.push('se ingreso una demanda o solicitud');
+  if(/contesta|traslado|evacua|oposicion/.test(texto)) desarrollo.push('hubo respuestas o presentaciones de las partes');
+  if(/audiencia|comparendo/.test(texto)) desarrollo.push('se realizaron o fijaron audiencias');
+  if(/oficio|informe|certificado|notificacion/.test(texto)) desarrollo.push('se agregaron antecedentes, oficios o notificaciones');
+  if(/resolucion|proveido|tengase|autos/.test(texto)) desarrollo.push('el tribunal fue resolviendo el avance de la causa');
+
+  const resultado = [];
+  if(/sentencia|dictacion de sentencia|con sentencia/.test(texto)) resultado.push('termino con sentencia o resolucion final relevante');
+  if(/se acoge|ha lugar/.test(texto)) resultado.push('se acogio alguna solicitud');
+  if(/se rechaza|no ha lugar/.test(texto)) resultado.push('se rechazo alguna solicitud');
+  if(/concluido|terminada|archivese|archivo/.test(texto)) resultado.push('aparece concluida o archivada');
+  if(/origen [a-z]-\d{1,6}-\d{4}/i.test(texto)) resultado.push('tiene relacion con otra causa anterior');
+
+  const materia = unicoResumen(materias).join(', ') || 'familia; faltan documentos legibles para precisar mejor';
+  const camino = docs.length
+    ? `${docs.length} documento(s): ${tipos.escritos} escrito(s), ${tipos.resoluciones} resolucion(es), ${tipos.actuaciones} actuacion(es). ${unicoResumen(desarrollo).join('; ') || 'sin suficiente texto para reconstruir el desarrollo'}`
+    : 'sin documentos asociados aun';
+  const cierre = unicoResumen(resultado).join('; ') || (c.estado ? `estado informado: ${c.estado}` : 'sin resultado claro detectado');
+
+  return `${c.rit ? c.rit + ': ' : ''}Trata de ${materia}. Desarrollo: ${camino}. Resultado: ${cierre}.`;
+}
+
+function normalizarResumen(texto) {
+  return String(texto || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g,' ')
+    .trim();
+}
+
+function unicoResumen(items) {
+  return [...new Set(items.filter(Boolean))];
+}
+
+function importarDocumentosOJV(input) {
+  const files = [...(input.files || [])];
+  if(!files.length) return;
+  let asociados = 0;
+  let sinRit = 0;
+  let ignorados = 0;
+  for(const file of files) {
+    if(!/\.pdf$/i.test(file.name)) { ignorados++; continue; }
+    const name = file.webkitRelativePath || file.name;
+    const rit = (name.match(/\b[A-Z]-\d{1,6}-\d{4}\b/i) || [])[0]?.toUpperCase();
+    let causa = rit ? E.causas.find(c=>String(c.rit||'').toUpperCase()===rit) : null;
+    if(!causa && rit) {
+      causa = {
+        id: Date.now()+asociados,
+        rit,
+        tribunal: '',
+        materia: 'Familia',
+        estado: '',
+        resumen: 'Causa creada desde documentos descargados de OJV.',
+        escritos: 0,
+        actualizado: new Date().toLocaleDateString('es-CL'),
+        documento: null,
+        documentos: [],
+        fuente: 'OJV'
+      };
+      E.causas.push(causa);
+    }
+    if(!causa && E.causas.length===1) causa = E.causas[0];
+    if(!causa) { sinRit++; continue; }
+    causa.documentos = causa.documentos || [];
+    const folio = (file.name.match(/Folio\s+(\d+)/i)||[])[1] || '';
+    if(folio && causa.documentos.some(d=>String(d.folio||'')===String(folio))) continue;
+    if(!folio && causa.documentos.some(d=>d.nombre===file.name)) continue;
+    if(!causa.documentos.some(d=>d.nombre===file.name)) {
+      const tipo = (file.name.match(/Folio\s+\d+\s+-\s+([^-]+)/i)||[])[1]?.trim() || 'Documento';
+      causa.documentos.push({
+        nombre: file.name,
+        tipo: file.type || 'application/pdf',
+        size: file.size,
+        folio,
+        tramite: tipo,
+        fecha: new Date().toLocaleDateString('es-CL'),
+      });
+      asociados++;
+    }
+    causa.escritos = Math.max(Number(causa.escritos||0), causa.documentos.length);
+    causa.actualizado = new Date().toLocaleDateString('es-CL');
+  }
+  guardarCausas();
+  renderCausas();
+  input.value = '';
+  const extra = [sinRit?`${sinRit} sin RIT`:null, ignorados?`${ignorados} no PDF`:null].filter(Boolean).join(' · ');
+  toast(extra ? `Asociados ${asociados} PDF(s) · ${extra}` : `Asociados ${asociados} PDF(s)`);
+}
+
+async function sincronizarDocumentosLocales() {
+  if(!window.alimentabDesktop?.scanOjvDocuments) {
+    toast('Disponible solo en la app de escritorio');
+    return;
+  }
+  toast('Leyendo PDFs descargados...');
+  try {
+    const causas = await window.alimentabDesktop.scanOjvDocuments();
+    let actualizadas = 0;
+    for(const incoming of causas) {
+      let causa = E.causas.find(c=>String(c.rit||'').toUpperCase()===incoming.rit);
+      if(!causa) {
+        causa = {
+          id: Date.now()+actualizadas,
+          rit: incoming.rit,
+          tribunal: '',
+          materia: 'Familia',
+          estado: '',
+          resumen: '',
+          escritos: 0,
+          actualizado: incoming.actualizado,
+          documentos: [],
+          fuente: 'OJV'
+        };
+        E.causas.push(causa);
+      }
+      const existing = new Set((causa.documentos||[]).map(d=>documentKey(d)));
+      causa.documentos = causa.documentos || [];
+      for(const doc of incoming.documentos || []) {
+        const key = documentKey(doc);
+        if(!existing.has(key)) causa.documentos.push(doc);
+      }
+      causa.escritos = causa.documentos.length;
+      causa.resumen = incoming.resumen || causa.resumen;
+      causa.actualizado = incoming.actualizado;
+      actualizadas++;
+    }
+    guardarCausas();
+    renderCausas();
+    toast(`Sincronizadas ${actualizadas} causa(s) con resumen`);
+  } catch(e) {
+    toast('No pude leer los PDFs descargados');
+  }
+}
+
+function documentKey(d) {
+  const rit = (d.path||d.nombre||'').match(/\b[A-Z]-\d{1,6}-\d{4}\b/i)?.[0] || '';
+  return [rit.toUpperCase(), d.folio || '', d.tramite || '', d.nombre || ''].join('|');
+}
+
+function borrarCausasLocales() {
+  if(!confirm('¿Borrar todas las causas y documentos asociados en esta app? No borra los PDFs descargados del disco.')) return;
+  E.causas = [];
+  localStorage.removeItem('at_causas');
+  renderCausas();
+  toast('Causas locales borradas');
+}
+
+function importarCausasOJV(input) {
+  const file = input.files?.[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      const items = Array.isArray(data) ? data : (data.causas || []);
+      if(!items.length) { toast('El archivo no trae causas'); return; }
+      const existentes = new Set(E.causas.map(c=>String(c.rit||'').toUpperCase()));
+      let agregadas = 0;
+      for(const item of items) {
+        const rit = String(item.rit||'').toUpperCase();
+        if(!rit || existentes.has(rit)) continue;
+        E.causas.push({
+          id: Date.now()+agregadas,
+          rit,
+          tribunal: item.tribunal || '',
+          materia: item.materia || 'Familia',
+          estado: item.estado || '',
+          resumen: item.resumen || item.texto || '',
+          escritos: Number(item.escritos||0),
+          actualizado: new Date().toLocaleDateString('es-CL'),
+          documento: null,
+          fuente: 'OJV'
+        });
+        existentes.add(rit);
+        agregadas++;
+      }
+      guardarCausas();
+      renderCausas();
+      toast(`Importadas ${agregadas} causa(s) desde OJV`);
+      input.value = '';
+    } catch {
+      toast('No pude leer el archivo de OJV');
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+function cargarConfigUI() {
+  const c = E.config;
+  const setVal = (id,v) => { const e=g(id); if(e) e.value=v; };
+  setVal('cfg-doc',c.doc); setVal('cfg-escritura',c.escritura); setVal('cfg-notaria',c.notaria);
+  setVal('cfg-monto',c.monto); setVal('cfg-unidad',c.unidad);
+  setVal('cfg-reajuste',c.reajuste); setVal('cfg-idx-rej',c.idxRej);
+  setVal('cfg-venc',String(c.vencDia));
+  setVal('cfg-receptora',c.receptora); setVal('cfg-rut-rec',c.rutRec);
+  setVal('cfg-banco',c.banco); setVal('cfg-tipo-cta',c.tipoCta);
+  setVal('cfg-cuenta',c.cuenta); setVal('cfg-benef',c.benef);
+  setVal('cfg-email-yo',c.emailYo); setVal('cfg-email-rec',c.emailRec);
+  cargarCloudUI();
+}
+
+function recalcular() {
+  const monto = parseFloat(g('cfg-monto')?.value);
+  const unidad = g('cfg-unidad')?.value;
+  if(monto) { E.config.monto=monto; E.config.unidad=unidad; }
+  const neto = calcNeto();
+  if(neto) {
+    const nota = g('cfg-monto-nota');
+    if(nota) nota.textContent = `✓ Cuota estimada: ${fclp(neto)} CLP`;
+  }
+}
+
+function guardarConfig() {
+  const getVal = id => { const e=g(id); return e?e.value:''; };
+  E.config = {
+    ...E.config,
+    doc: getVal('cfg-doc'), escritura: getVal('cfg-escritura'), notaria: getVal('cfg-notaria'),
+    monto: parseFloat(getVal('cfg-monto'))||21.1108,
+    unidad: getVal('cfg-unidad'),
+    reajuste: getVal('cfg-reajuste'), idxRej: getVal('cfg-idx-rej'),
+    vencDia: parseInt(getVal('cfg-venc'))||5,
+    receptora: getVal('cfg-receptora'), rutRec: getVal('cfg-rut-rec'),
+    banco: getVal('cfg-banco'), tipoCta: getVal('cfg-tipo-cta'),
+    cuenta: getVal('cfg-cuenta'), benef: getVal('cfg-benef'),
+    emailYo: getVal('cfg-email-yo'), emailRec: getVal('cfg-email-rec'),
+  };
+  localStorage.setItem('at_config', JSON.stringify(E.config));
+  marcarNubePendiente();
+  pintarUI();
+  renderMedios();
+  toast('✓ Configuración guardada');
+}
+
+// ══════════════════════════════
+// SINCRONIZACIÓN EN LA NUBE
+// ══════════════════════════════
+let _supabaseClient = null;
+
+function cargarCloudUI() {
+  const c = E.cloud || {};
+  const setVal = (id,v) => { const e=g(id); if(e) e.value=v || ''; };
+  setVal('cloud-url', c.url);
+  setVal('cloud-key', c.key);
+  setVal('cloud-email', c.email);
+  estadoNube();
+}
+
+function guardarCloud() {
+  E.cloud = {
+    url: g('cloud-url')?.value.trim() || '',
+    key: g('cloud-key')?.value.trim() || '',
+    email: g('cloud-email')?.value.trim() || '',
+    pending: E.cloud?.pending || false,
+    lastSync: E.cloud?.lastSync || ''
+  };
+  localStorage.setItem('at_cloud', JSON.stringify(E.cloud));
+  _supabaseClient = null;
+  estadoNube();
+  toast('Configuración de nube guardada');
+}
+
+function marcarNubePendiente() {
+  if(!E.cloud?.url || !E.cloud?.key) return;
+  E.cloud.pending = true;
+  localStorage.setItem('at_cloud', JSON.stringify(E.cloud));
+  estadoNube();
+}
+
+async function cargarSupabase() {
+  if(_supabaseClient) return _supabaseClient;
+  if(!E.cloud?.url || !E.cloud?.key) throw new Error('Falta configurar Supabase');
+  if(!window.supabase) {
+    await new Promise((resolve, reject)=>{
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('No pude cargar Supabase'));
+      document.head.appendChild(s);
+    });
+  }
+  _supabaseClient = window.supabase.createClient(E.cloud.url, E.cloud.key, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
+  return _supabaseClient;
+}
+
+async function usuarioNube() {
+  const sb = await cargarSupabase();
+  const { data, error } = await sb.auth.getSession();
+  if(error) throw error;
+  return data.session?.user || null;
+}
+
+async function solicitarEnlaceNube() {
+  guardarCloud();
+  if(!E.cloud.email) { toast('Agrega tu correo de acceso'); return; }
+  if(!/^https:\/\/.+\.supabase\.co$/i.test(E.cloud.url || '')) { toast('La URL de Supabase debe terminar en .supabase.co'); return; }
+  if(!/^eyJ/.test(E.cloud.key || '')) { toast('La clave anon debe empezar con eyJ'); return; }
+  try {
+    const sb = await cargarSupabase();
+    const password = g('cloud-password')?.value || '';
+    if(password) {
+      const { error } = await sb.auth.signInWithPassword({ email: E.cloud.email, password });
+      if(error) throw error;
+      g('cloud-password').value = '';
+      await estadoNube();
+      toast('Sesión iniciada en la nube');
+      return;
+    }
+    const redirect = location.protocol.startsWith('http') ? location.href.split('#')[0] + '#config' : undefined;
+    const payload = redirect
+      ? { email: E.cloud.email, options: { emailRedirectTo: redirect } }
+      : { email: E.cloud.email };
+    const { error } = await sb.auth.signInWithOtp(payload);
+    if(error) throw error;
+    toast('Te envié un enlace de acceso al correo');
+  } catch(e) {
+    toast('Supabase: ' + (e?.message || 'no pude iniciar sesión'));
+  }
+}
+
+async function estadoNube() {
+  const el = g('cloud-status');
+  if(!el) return;
+  if(!E.cloud?.url || !E.cloud?.key) {
+    el.textContent = 'Primero pega la URL de Supabase y la clave pública anon; mientras tanto tus datos quedan solo en este dispositivo';
+    return;
+  }
+  try {
+    const user = await usuarioNube();
+    const extra = E.cloud.pending ? ' · cambios pendientes de subir' : '';
+    el.textContent = user ? `Conectado como ${user.email || 'usuario'}${extra}` : 'Configurado · falta entrar con el correo';
+  } catch {
+    el.textContent = 'Configurado · revisa URL/clave pública o conexión';
+  }
+}
+
+function estadoLocalParaNube() {
+  return {
+    config: E.config,
+    pagos: E.pagos,
+    causas: E.causas,
+    updated_at: new Date().toISOString()
+  };
+}
+
+async function leerNube() {
+  const sb = await cargarSupabase();
+  const user = await usuarioNube();
+  if(!user) throw new Error('No conectado');
+  const { data, error } = await sb
+    .from('alimentab_state')
+    .select('config,pagos,causas,updated_at')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if(error) throw error;
+  return { user, data };
+}
+
+async function escribirNube(payload) {
+  const sb = await cargarSupabase();
+  const user = await usuarioNube();
+  if(!user) throw new Error('No conectado');
+  const { error } = await sb.from('alimentab_state').upsert({
+    user_id: user.id,
+    config: payload.config || {},
+    pagos: payload.pagos || [],
+    causas: payload.causas || [],
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id' });
+  if(error) throw error;
+  E.cloud.pending = false;
+  E.cloud.lastSync = new Date().toISOString();
+  localStorage.setItem('at_cloud', JSON.stringify(E.cloud));
+  estadoNube();
+}
+
+async function subirNube() {
+  try {
+    await escribirNube(estadoLocalParaNube());
+    toast('Datos subidos a la nube');
+  } catch(e) {
+    toast('No pude subir · revisa sesión y tabla Supabase');
+  }
+}
+
+async function bajarNube() {
+  try {
+    const { data } = await leerNube();
+    if(!data) { toast('No hay datos guardados en la nube'); return; }
+    aplicarEstadoNube(data);
+    toast('Datos bajados desde la nube');
+  } catch(e) {
+    toast('No pude bajar · revisa sesión y conexión');
+  }
+}
+
+async function sincronizarNube() {
+  try {
+    const { data } = await leerNube();
+    const mezclado = mezclarEstado(data || {}, estadoLocalParaNube());
+    aplicarEstadoNube(mezclado);
+    await escribirNube(mezclado);
+    toast('Sincronización lista');
+  } catch(e) {
+    toast('No pude sincronizar · revisa sesión y configuración');
+  }
+}
+
+function aplicarEstadoNube(data, guardar=true) {
+  E.config = { ...E.config, ...(data.config || {}) };
+  E.pagos = Array.isArray(data.pagos) ? data.pagos : [];
+  E.causas = Array.isArray(data.causas) ? data.causas : [];
+  if(guardar) {
+    localStorage.setItem('at_config', JSON.stringify(E.config));
+    localStorage.setItem('at_pagos', JSON.stringify(E.pagos));
+    localStorage.setItem('at_causas', JSON.stringify(E.causas));
+  }
+  cargarConfigUI();
+  pintarUI();
+  renderMedios();
+}
+
+function mezclarEstado(nube, local) {
+  return {
+    config: { ...(nube.config || {}), ...(local.config || {}) },
+    pagos: mezclarPorClave(nube.pagos || [], local.pagos || [], p => String(p.id || `${p.periodo}-${p.fechaISO}-${p.neto}`)),
+    causas: mezclarPorClave(nube.causas || [], local.causas || [], c => String(c.rit || c.ruc || c.materia || JSON.stringify(c).slice(0,40))),
+    updated_at: new Date().toISOString()
+  };
+}
+
+function mezclarPorClave(a, b, keyFn) {
+  const map = new Map();
+  [...a, ...b].forEach(item => {
+    const key = keyFn(item);
+    if(!map.has(key)) map.set(key, item);
+    else map.set(key, { ...map.get(key), ...item });
+  });
+  return [...map.values()];
+}
+
+// ══════════════════════════════
+// NAVEGACIÓN
+// ══════════════════════════════
+function nav(id, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.bn').forEach(b=>b.classList.remove('active'));
+  const pg=g(id); if(pg) pg.classList.add('active');
+  if(btn) btn.classList.add('active');
+  else document.querySelectorAll(`[data-p="${id}"]`).forEach(b=>b.classList.add('active'));
+  document.querySelector('.scroll')?.scrollTo(0,0);
+  const clean = id.replace('p-','');
+  if(location.hash !== '#'+clean) history.replaceState(null, '', '#'+clean);
+}
+
+function navDesdeHash() {
+  const mapa = { inicio:'p-inicio', pagar:'p-pagar', historial:'p-historial', indicadores:'p-indicadores', causas:'p-causas', config:'p-config', pension:'p-config' };
+  const key = location.hash.replace('#','');
+  if(mapa[key]) nav(mapa[key]);
+}
+
+// ══════════════════════════════
+// MODALES
+// ══════════════════════════════
+function openMo(id)  { g(id).classList.add('open'); }
+function closeMo(id) { g(id).classList.remove('open'); }
+document.querySelectorAll('.mo-ov').forEach(o=>{
+  o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); });
+});
+
+// ══════════════════════════════
+// TOAST
+// ══════════════════════════════
+let _tt;
+function toast(msg) {
+  const t=g('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(_tt); _tt=setTimeout(()=>t.classList.remove('show'),3800);
+}
+
+// ══════════════════════════════
+// INSTALACIÓN PWA
+// ══════════════════════════════
+let _installPrompt = null;
+
+function esStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function esIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function mostrarInstalacion(modo='pc') {
+  if(esStandalone() || localStorage.getItem('at_install_dismissed') === '1') return;
+  const card = g('install-card');
+  if(!card) return;
+  const copy = g('install-copy');
+  const btn = g('install-btn');
+  if(esIOS()) {
+    copy.textContent = 'En iPhone: toca Compartir y luego "Agregar a pantalla de inicio". Quedará como app independiente.';
+    btn.textContent = 'Entendido';
+  } else if(modo === 'pc') {
+    copy.textContent = 'Instálala en Chrome o Edge para abrirla como app de escritorio y tener respaldo sin conexión.';
+    btn.textContent = 'Instalar';
+  }
+  card.classList.add('show');
+}
+
+function ocultarInstalacion() {
+  localStorage.setItem('at_install_dismissed', '1');
+  g('install-card')?.classList.remove('show');
+}
+
+async function instalarApp() {
+  if(esIOS()) {
+    toast('En iPhone: Compartir → Agregar a pantalla de inicio');
+    return;
+  }
+  if(!_installPrompt) {
+    toast('Si tu navegador muestra el ícono de instalar, úsalo desde la barra de direcciones');
+    return;
+  }
+  _installPrompt.prompt();
+  const res = await _installPrompt.userChoice;
+  if(res.outcome === 'accepted') ocultarInstalacion();
+  _installPrompt = null;
+}
+
+function iniciarPWA() {
+  if('serviceWorker' in navigator && location.protocol !== 'file:') {
+    navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+  }
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _installPrompt = e;
+    mostrarInstalacion('pc');
+  });
+  window.addEventListener('appinstalled', ocultarInstalacion);
+  setTimeout(()=> {
+    if(esIOS() && !esStandalone()) mostrarInstalacion('ios');
+  }, 900);
+}
+
+// ══════════════════════════════
+// INIT
+// ══════════════════════════════
+document.addEventListener('DOMContentLoaded', ()=>{
+  iniciarPWA();
+  poblarPeriodos();
+  cargarConfigUI();
+  renderMedios();
+  cargar();
+  renderHist();
+  renderBalancesInicio();
+  renderCausas();
+  navDesdeHash();
+  window.addEventListener('hashchange', navDesdeHash);
+  setInterval(cargar, 30*60*1000);
+});
+</script>
+</body>
+</html>
