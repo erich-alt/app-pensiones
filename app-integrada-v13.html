@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Finanzas Pro v13 - Proyección Renta</title>
+<link rel="stylesheet" href="ingresos-pension.css">
+</head>
+<body>
+<div class="top">
+  <h1>Finanzas Pro v13 - Proyección Renta</h1>
+  <div class="sub">Separa DJ1887/Banco, Formulario 22 y cálculo de devolución. No mezcla devolución con impuesto retenido.</div>
+  <span class="pill">DJ1887</span><span class="pill">Impuesto recaudado</span><span class="pill">Impuesto calculado</span><span class="pill">Devolución</span>
+</div>
+<section class="on">
+  <div class="card">
+    <div class="k">Año Tributario</div>
+    <div class="row">
+      <div><label>Año Tributario</label><input id="taxYear" type="number" value="2026" onchange="render()"></div>
+      <div style="align-self:end"><button class="btn" onclick="render()">Actualizar</button></div>
+      <div style="align-self:end"><button class="btn btn2" onclick="location.href='app-integrada-v8.html'">Carga PDF</button></div>
+      <div style="align-self:end"><button class="btn btn2" onclick="location.href='app-integrada-v12.html'">Banco/SII</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="k">1. DJ1887 / Banco Itaú / Agente retenedor</div>
+    <p class="note">Estos datos vienen de “Detalle información proporcionada por sus agentes retenedores”. No son la devolución. Para tu caso: renta actualizada 66.064.422 e impuesto único actualizado 6.056.557.</p>
+    <div class="row">
+      <div><label>Renta total neta pagada actualizada</label><input id="djBase" placeholder="66064422"></div>
+      <div><label>Impuesto único retenido actualizado</label><input id="djTax" placeholder="6056557"></div>
+      <div style="align-self:end"><button class="btn btnG" onclick="saveAll()">Guardar datos</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="k">2. Formulario 22 / Propuesta renta</div>
+    <p class="note">Acá va el impuesto anual calculado por SII y el resultado/devolución. El resultado/devolución no se compara contra el impuesto retenido; se compara contra la fórmula de liquidación.</p>
+    <div class="row">
+      <div><label>Impuesto calculado F22</label><input id="calcTax" placeholder="impuesto anual determinado"></div>
+      <div><label>Otros créditos / rebajas F22</label><input id="otherCredits" placeholder="si existen, si no 0"></div>
+      <div><label>Devolución / resultado F22</label><input id="f22Result" placeholder="158114"></div>
+      <div style="align-self:end"><button class="btn btnG" onclick="saveAll()">Guardar modelo</button></div>
+    </div>
+  </div>
+
+  <div class="grid card">
+    <div><div class="k">Base nominal app</div><div class="v mono warn" id="baseNom">$0</div></div>
+    <div><div class="k">Base DJ actualizada</div><div class="v mono warn" id="baseDj">$0</div></div>
+    <div><div class="k">Dif. base nominal</div><div class="v mono" id="baseDiff">$0</div></div>
+    <div><div class="k">Factor base</div><div class="v mono" id="baseFactor">0</div></div>
+  </div>
+
+  <div class="grid card">
+    <div><div class="k">Impuesto nominal app</div><div class="v mono" id="taxNom">$0</div></div>
+    <div><div class="k">Impuesto recaudado actualizado</div><div class="v mono" id="taxDj">$0</div></div>
+    <div><div class="k">Dif. impuesto nominal</div><div class="v mono" id="taxDiff">$0</div></div>
+    <div><div class="k">Factor impuesto</div><div class="v mono" id="taxFactor">0</div></div>
+  </div>
+
+  <div class="grid card">
+    <div><div class="k">Impuesto calculado F22</div><div class="v mono" id="calcTaxView">$0</div></div>
+    <div><div class="k">Créditos disponibles</div><div class="v mono good" id="creditsView">$0</div></div>
+    <div><div class="k">Devolución estimada</div><div class="v mono good" id="refundEst">$0</div></div>
+    <div><div class="k">Dif. vs resultado F22</div><div class="v mono" id="refundDiff">$0</div></div>
+  </div>
+
+  <div class="card"><div class="k">Diagnóstico</div><div id="diag" class="notice"></div></div>
+  <div class="card"><div class="k">Detalle liquidaciones del AT</div><div id="tbl" class="scroll"></div></div>
+  <div class="card"><div class="k">Respaldo</div><button class="btn" onclick="downloadJson()">Descargar JSON</button></div>
+</section>
+<script>
+const STORE='finanzas_integrada_v5_fix_mes_utm';
+let S=load();
+function $(id){return document.getElementById(id)}
+function money(n){return '$'+Math.round(+n||0).toLocaleString('es-CL')}
+function clp(v){if(typeof v==='number')return Math.round(v)||0;let s=String(v||'').trim(),neg=s[0]=='-'||/\(.+\)/.test(s);s=s.replace(/[^\d,.-]/g,'');if(!s)return 0;let p=s.split(/[,.]/),last=p[p.length-1],dec=p.length>1&&last.length<=2,n=dec?Number(p.slice(0,-1).join('').replace(/\D/g,'')+'.'+last.replace(/\D/g,'')):Number(s.replace(/\D/g,''));return Math.round((neg?-1:1)*(n||0))}
+function y(d){return +String(d||'').slice(0,4)||new Date().getFullYear()}
+function load(){try{return normalize(JSON.parse(localStorage.getItem(STORE))||seed())}catch(e){return seed()}}
+function seed(){return{records:[],taxModels:[],dj1887:[],rentas:[]}}
+function normalize(s){s.records=s.records||[];s.taxModels=s.taxModels||[];s.dj1887=s.dj1887||[];s.rentas=s.rentas||[];s.records.forEach((r,i)=>{if(!r.id)r.id='r'+i;if(r.type!=='flow'&&!r.taxYear){let py=y(r.paymentDate);r.taxYear=r.type==='bonus'?py:py+1}if(r.type!=='flow'&&!r.rentaYear)r.rentaYear=r.taxYear-1});return s}
+function save(){localStorage.setItem(STORE,JSON.stringify(S));render()}
+function isTax(r){return r&&r.type!=='flow'&&r.isTaxable!==false}
+function getModel(at){return S.taxModels.find(x=>+x.taxYear===+at)||{taxYear:at,djBase:0,djTax:0,calcTax:0,otherCredits:0,f22Result:0}}
+function saveAll(){let at=clp($('taxYear').value),m={taxYear:at,djBase:clp($('djBase').value),djTax:clp($('djTax').value),calcTax:clp($('calcTax').value),otherCredits:clp($('otherCredits').value),f22Result:clp($('f22Result').value)};if(m.djBase&&m.djTax&&Math.abs(m.djBase-m.djTax)<100000){alert('El impuesto retenido actualizado no puede ser igual a la base. Revisa el dato.');return}S.taxModels=S.taxModels.filter(x=>+x.taxYear!==at);S.taxModels.push(m);S.dj1887=S.dj1887.filter(x=>+x.taxYear!==at);S.dj1887.push({taxYear:at,baseBank:m.djBase,taxBank:m.djTax,result:m.f22Result,source:'modelo v13'});save()}
+function render(){let at=clp($('taxYear').value)||2026,R=S.records.filter(r=>isTax(r)&&+r.taxYear===at).sort((a,b)=>String(a.paymentDate).localeCompare(String(b.paymentDate))),M=getModel(at),baseNom=R.reduce((s,r)=>s+clp(r.taxableBaseClp),0),taxNom=R.reduce((s,r)=>s+clp(r.withheldTaxClp),0),djBase=clp(M.djBase),djTax=clp(M.djTax),calcTax=clp(M.calcTax),other=clp(M.otherCredits),f22Result=clp(M.f22Result),credits=djTax+other,refund=credits-calcTax;
+$('djBase').value=djBase||'';$('djTax').value=djTax||'';$('calcTax').value=calcTax||'';$('otherCredits').value=other||'';$('f22Result').value=f22Result||'';
+$('baseNom').textContent=money(baseNom);$('baseDj').textContent=money(djBase);$('baseDiff').textContent=money(baseNom-djBase);$('baseFactor').textContent=baseNom&&djBase?(djBase/baseNom).toFixed(5):'0';
+$('taxNom').textContent=money(taxNom);$('taxDj').textContent=money(djTax);$('taxDiff').textContent=money(taxNom-djTax);$('taxFactor').textContent=taxNom&&djTax?(djTax/taxNom).toFixed(5):'0';
+$('calcTaxView').textContent=money(calcTax);$('creditsView').textContent=money(credits);$('refundEst').textContent=money(refund);$('refundDiff').textContent=money(refund-f22Result);
+$('tbl').innerHTML=R.length?'<table><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Base</th><th>Imp. retenido</th><th>Líquido</th><th>Renta</th><th>AT</th></tr>'+R.map(r=>`<tr><td>${r.paymentDate||''}</td><td>${r.type==='bonus'?'Bono':'Sueldo'}</td><td>${r.description||''}<br><span class="note">${r.source||''}</span></td><td>${money(r.taxableBaseClp)}</td><td>${money(r.withheldTaxClp)}</td><td>${money(r.netClp)}</td><td>${r.rentaYear||''}</td><td>${r.taxYear||''}</td></tr>`).join('')+'</table>':'<p class="note">Sin registros para este AT.</p>';
+let msg=[];msg.push('Registros AT: '+R.length+'. Para el año 2026 deberían ser 13: 12 sueldos 2025 más bono gestión pagado 2026 y reliquidado a renta 2025.');msg.push('Fórmula de proyección: Devolución estimada = impuesto recaudado actualizado + otros créditos - impuesto calculado F22.');if(djTax&&djTax<1000000)msg.push('<b class="bad">El impuesto recaudado parece bajo. Probablemente pusiste devolución/resultado en vez del impuesto único actualizado de la DJ1887.</b>');if(f22Result&&Math.abs(refund-f22Result)>1000)msg.push('La diferencia contra resultado F22 indica que falta ingresar el impuesto calculado F22, otros créditos, o algún código de la liquidación anual.');msg.push('No necesito tus credenciales SII. Comparte PDFs/capturas de los códigos y los modelamos acá.');$('diag').innerHTML=msg.map(x=>'<p>'+x+'</p>').join('')}
+function downloadJson(){let a=document.createElement('a'),b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});a.href=URL.createObjectURL(b);a.download='finanzas_v13_modelo_renta.json';a.click();URL.revokeObjectURL(a.href)}
+render();
+</script>
+</body>
+</html>
