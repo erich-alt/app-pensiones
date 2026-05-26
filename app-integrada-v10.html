@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Finanzas Pro v10 - Reajuste SII</title>
+<link rel="stylesheet" href="ingresos-pension.css">
+</head>
+<body>
+<div class="top"><h1>Finanzas Pro v10 - Reajuste SII</h1><div class="sub">Diagnóstico de renta con factor mensual editable y calibración contra F22/Banco. Mantiene la misma base local de v7/v8/v9.</div><span class="pill">Factor mensual</span><span class="pill">Calibrar F22</span><span class="pill">Diagnóstico</span><span class="pill">Bono reliquidado</span></div>
+<section class="on">
+ <div class="card"><div class="k">Parámetros</div><p class="note">El SII/Banco muestra montos anuales actualizados. Para cuadrar, no basta con sumar liquidaciones nominales. Usa el modo “Factor mensual SII” y ajusta los factores si el F22/Banco no cuadra. “Calibrado F22” reparte el factor implícito total solo para diagnosticar.</p><div class="row"><div><label>Año Tributario</label><input id="taxYear" type="number" value="2026" onchange="render()"></div><div><label>Modo reajuste</label><select id="mode" onchange="render()"><option value="monthly">Factor mensual SII editable</option><option value="calibrated">Calibrado exacto con F22</option><option value="none">Sin reajuste / nominal</option></select></div><div style="align-self:end"><button class="btn" onclick="render()">Actualizar</button></div><div style="align-self:end"><button class="btn btn2" onclick="location.href='app-integrada-v8.html'">Carga masiva</button></div></div></div>
+ <div class="card"><div class="k">Valores F22 / Banco</div><div class="row"><div><label>Base F22 / Renta total actualizada</label><input id="f22base"></div><div><label>Crédito IUSC / Impuesto único actualizado</label><input id="f22tax"></div><div style="align-self:end"><button class="btn btnG" onclick="saveF22()">Guardar F22</button></div><div style="align-self:end"><button class="btn btn2" onclick="calibrateMonthly()">Calibrar factores</button></div></div><div id="f22Msg" class="notice">Ingresa los valores del certificado/F22. Si presionas “Calibrar factores”, la app ajusta los factores mensuales proporcionalmente para cuadrar la base F22.</div></div>
+ <div class="card"><div class="k">Factores mensuales de reajuste AT</div><p class="note">Estos factores se aplican según el mes al que corresponde la renta. Si el bono pagado en febrero 2026 fue reliquidado a renta 2025, su mes de reajuste se toma como 2025-12 por defecto para evitar bajarlo por estar pagado en 2026. Puedes editar el factor de cada mes.</p><div id="factorTable" class="scroll"></div></div>
+ <div class="grid card"><div><div class="k">Base nominal</div><div class="v mono warn" id="baseNom">$0</div></div><div><div class="k">Base reajustada</div><div class="v mono warn" id="baseAdj">$0</div></div><div><div class="k">Base F22</div><div class="v mono warn" id="baseF22View">$0</div></div><div><div class="k">Diferencia base</div><div class="v mono" id="baseDiff">$0</div></div></div>
+ <div class="grid card"><div><div class="k">Impuesto nominal</div><div class="v mono" id="taxNom">$0</div></div><div><div class="k">Impuesto reajustado</div><div class="v mono" id="taxAdj">$0</div></div><div><div class="k">Crédito IUSC F22</div><div class="v mono" id="taxF22View">$0</div></div><div><div class="k">Diferencia impuesto</div><div class="v mono" id="taxDiff">$0</div></div></div>
+ <div class="card"><div class="k">Diagnóstico</div><div id="diag" class="notice"></div></div>
+ <div class="card"><div class="k">Detalle con factor usado</div><div id="tbl" class="scroll"></div></div>
+ <div class="card"><div class="k">Respaldo</div><button class="btn" onclick="downloadJson()">Descargar JSON</button><button class="btn btn2" onclick="location.href='app-integrada-v9.html'">Volver v9 UF</button><button class="btn btn2" onclick="location.href='app-integrada-v7.html'">App completa</button></div>
+</section>
+<script>
+const STORE='finanzas_integrada_v5_fix_mes_utm';
+const BASE_FACTORS_2026={'2025-01':1.030,'2025-02':1.030,'2025-03':1.024,'2025-04':1.020,'2025-05':1.016,'2025-06':1.013,'2025-07':1.010,'2025-08':1.008,'2025-09':1.006,'2025-10':1.004,'2025-11':1.002,'2025-12':1.000};
+let S=load();
+function $(id){return document.getElementById(id)}
+function money(n){return '$'+Math.round(+n||0).toLocaleString('es-CL')}
+function clp(v){if(typeof v==='number')return Math.round(v)||0;let s=String(v||'').trim(),neg=s[0]=='-'||/\(.+\)/.test(s);s=s.replace(/[^\d,.-]/g,'');if(!s)return 0;let p=s.split(/[,.]/),last=p[p.length-1],hasDec=p.length>1&&last.length<=2,n=hasDec?Number(p.slice(0,-1).join('').replace(/\D/g,'')+'.'+last.replace(/\D/g,'')):Number(s.replace(/\D/g,''));return Math.round((neg?-1:1)*(n||0))}
+function ym(d){return String(d||'').slice(0,7)}
+function year(d){return +String(d||'').slice(0,4)||new Date().getFullYear()}
+function load(){try{return normalize(JSON.parse(localStorage.getItem(STORE))||seed())}catch(e){return seed()}}
+function seed(){return{records:[],rentas:[],factors:{},obligations:[],payments:[]}}
+function normalize(s){s.records=s.records||[];s.rentas=s.rentas||[];s.factors=s.factors||{};s.records.forEach((r,i)=>{if(!r.id)r.id='r_old_'+i;if(r.type!=='flow'&&!r.taxYear){let py=year(r.paymentDate);r.taxYear=r.type==='bonus'?py:py+1}if(r.type!=='flow'&&!r.rentaYear)r.rentaYear=r.taxYear-1});return s}
+function save(){localStorage.setItem(STORE,JSON.stringify(S))}
+function isTax(r){return r&&r.isTaxable!==false&&r.type!=='flow'}
+function f22(at){return S.rentas.find(x=>+x.taxYear===+at)||{taxYear:at,baseF22:0,creditIusc:0}}
+function saveF22(){let at=clp($('taxYear').value),r={taxYear:at,baseF22:clp($('f22base').value),creditIusc:clp($('f22tax').value),source:'manual v10'};S.rentas=S.rentas.filter(x=>+x.taxYear!==at);S.rentas.push(r);save();$('f22Msg').textContent='F22 guardado.';render()}
+function monthKey(r){if(r.type==='bonus'&&r.rentaYear){return r.rentaYear+'-12'}return ym(r.paymentDate)}
+function factorKey(at,m){return at+'_'+m}
+function factorFor(r,baseNom,totalF22){let mode=$('mode').value;if(mode==='none')return 1;if(mode==='calibrated')return baseNom&&totalF22?totalF22/baseNom:1;let at=clp($('taxYear').value),m=monthKey(r),k=factorKey(at,m);return Number(S.factors[k]??BASE_FACTORS_2026[m]??1)}
+function setFactor(at,m,v){S.factors[factorKey(at,m)]=Number(String(v).replace(',','.'))||1;save();render()}
+function renderFactors(at){let months=Object.keys(BASE_FACTORS_2026);$('factorTable').innerHTML='<table><tr><th>Mes renta</th><th>Factor</th></tr>'+months.map(m=>{let val=S.factors[factorKey(at,m)]??BASE_FACTORS_2026[m];return`<tr><td>${m}</td><td><input value="${Number(val).toFixed(5)}" onchange="setFactor(${at},'${m}',this.value)"></td></tr>`}).join('')+'</table>'}
+function compute(){let at=clp($('taxYear').value)||2026,R=S.records.filter(r=>isTax(r)&&+r.taxYear===at).sort((a,b)=>String(a.paymentDate).localeCompare(String(b.paymentDate))),F=f22(at),baseNom=R.reduce((s,r)=>s+clp(r.taxableBaseClp),0),taxNom=R.reduce((s,r)=>s+clp(r.withheldTaxClp),0);let rows=R.map(r=>{let base=clp(r.taxableBaseClp),tax=clp(r.withheldTaxClp),fac=factorFor(r,baseNom,clp(F.baseF22));return{r,base,tax,fac,baseAdj:Math.round(base*fac),taxAdj:Math.round(tax*fac),m:monthKey(r)}});return{at,R,F,baseNom,taxNom,rows,baseAdj:rows.reduce((s,x)=>s+x.baseAdj,0),taxAdj:rows.reduce((s,x)=>s+x.taxAdj,0)}}
+function render(){let C=compute(),fb=clp(C.F.baseF22),ft=clp(C.F.creditIusc);$('f22base').value=fb||'';$('f22tax').value=ft||'';$('baseNom').textContent=money(C.baseNom);$('taxNom').textContent=money(C.taxNom);$('baseAdj').textContent=money(C.baseAdj);$('taxAdj').textContent=money(C.taxAdj);$('baseF22View').textContent=money(fb);$('taxF22View').textContent=money(ft);$('baseDiff').textContent=money(C.baseAdj-fb);$('taxDiff').textContent=money(C.taxAdj-ft);renderFactors(C.at);$('tbl').innerHTML=C.rows.length?'<table><tr><th>Fecha pago</th><th>Mes reajuste usado</th><th>Tipo</th><th>Detalle</th><th>Base nominal</th><th>Factor</th><th>Base reaj.</th><th>Imp. nominal</th><th>Imp. reaj.</th><th>Renta</th><th>AT</th></tr>'+C.rows.map(x=>`<tr><td>${x.r.paymentDate}</td><td>${x.m}</td><td>${x.r.type==='bonus'?'Bono':'Sueldo'}</td><td>${x.r.description||''}<br><span class="note">${x.r.source||''}</span></td><td class="money">${money(x.base)}</td><td>${x.fac.toFixed(5)}</td><td class="money">${money(x.baseAdj)}</td><td class="money">${money(x.tax)}</td><td class="money">${money(x.taxAdj)}</td><td>${x.r.rentaYear||''}</td><td>${x.r.taxYear||''}</td></tr>`).join('')+'</table>':'<p class="note">Sin registros para este AT.</p>';let msg=[];msg.push('Registros AT: '+C.R.length+'. Si son 13, están las 12 liquidaciones más el bono.');if(fb){msg.push('Diferencia nominal contra F22: '+money(C.baseNom-fb)+'. Diferencia reajustada contra F22: '+money(C.baseAdj-fb)+'.');if($('mode').value==='calibrated')msg.push('Modo calibrado: la base debería cuadrar exacto con F22. Si no cuadra, hay redondeo por registro.');}msg.push('Si el bono está pagado en febrero 2026 pero reliquidado a renta 2025, v10 usa mes de reajuste 2025-12 por defecto.');msg.push('Si aún hay diferencia relevante, revisa la tabla: algún registro puede estar usando mes de reajuste incorrecto o falta el Crédito IUSC F22.');$('diag').innerHTML=msg.map(x=>'<p>'+x+'</p>').join('')}
+function calibrateMonthly(){let C=compute(),fb=clp(C.F.baseF22);if(!fb||!C.baseNom){alert('Primero ingresa/guarda Base F22.');return}let ratio=fb/C.baseNom,at=C.at;Object.keys(BASE_FACTORS_2026).forEach(m=>S.factors[factorKey(at,m)]=ratio);save();$('mode').value='monthly';render()}
+function downloadJson(){let a=document.createElement('a'),b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});a.href=URL.createObjectURL(b);a.download='finanzas_v10_reajuste.json';a.click();URL.revokeObjectURL(a.href)}
+render();
+</script>
+</body>
+</html>
