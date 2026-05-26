@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Finanzas Pro v9 - Reajuste</title>
+<link rel="stylesheet" href="ingresos-pension.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+<div class="top">
+  <h1>Finanzas Pro v9 - Reajuste Renta</h1>
+  <div class="sub">Agrega columnas de reajuste automático usando fecha de pago y fecha de actualización/impuesto. Mantiene la misma data local de v7/v8.</div>
+  <span class="pill">Base reajustada</span><span class="pill">Impuesto reajustado</span><span class="pill">UF pago</span><span class="pill">UF cierre</span>
+</div>
+<section class="on">
+  <div class="card">
+    <div class="k">Parámetros de cálculo</div>
+    <p class="note">Por defecto se usa como fecha de actualización el 31 de diciembre del año renta. Si quieres probar con otra fecha de impuesto/F22, cámbiala abajo. Fórmula: monto reajustado = monto nominal × UF fecha actualización / UF fecha pago.</p>
+    <div class="row">
+      <div><label>Año Tributario</label><input id="taxYear" type="number" value="2026" onchange="setDefaultAdjDate();render()"></div>
+      <div><label>Fecha actualización / impuesto</label><input id="adjDate" type="date" onchange="render()"></div>
+      <div><label>UF fecha actualización</label><input id="adjUf" onchange="render()"></div>
+      <div style="align-self:end"><button class="btn" onclick="render()">Actualizar</button></div>
+    </div>
+  </div>
+  <div class="grid card">
+    <div><div class="k">Base nominal app</div><div class="v mono warn" id="baseNom">$0</div></div>
+    <div><div class="k">Base reajustada app</div><div class="v mono warn" id="baseAdj">$0</div></div>
+    <div><div class="k">Base F22 / banco</div><div class="v mono warn" id="baseF22View">$0</div></div>
+    <div><div class="k">Diferencia base reaj.</div><div class="v mono" id="baseDiff">$0</div></div>
+  </div>
+  <div class="grid card">
+    <div><div class="k">Imp. retenido nominal</div><div class="v mono" id="taxNom">$0</div></div>
+    <div><div class="k">Imp. retenido reaj.</div><div class="v mono" id="taxAdj">$0</div></div>
+    <div><div class="k">Crédito IUSC F22 / banco</div><div class="v mono" id="taxF22View">$0</div></div>
+    <div><div class="k">Diferencia impuesto reaj.</div><div class="v mono" id="taxDiff">$0</div></div>
+  </div>
+  <div class="card">
+    <div class="k">Formulario 22 / dato banco informado</div>
+    <p class="note">Puedes usar acá los valores de la pantalla del SII/banco: Renta total neta pagada actualizada y Crédito/Impuesto Único actualizado.</p>
+    <div class="row">
+      <div><label>Base F22 / Renta total actualizada</label><input id="baseF22"></div>
+      <div><label>Crédito IUSC / Impuesto único actualizado</label><input id="taxF22"></div>
+      <div style="align-self:end"><button class="btn btnG" onclick="saveF22()">Guardar valores F22</button></div>
+    </div>
+    <div id="f22Msg" class="notice">Si el lector anterior dejó crédito IUSC en cero, ingrésalo manualmente aquí.</div>
+  </div>
+  <div class="card">
+    <div class="k">Detalle con columna reajustada</div>
+    <div id="tbl" class="scroll"></div>
+  </div>
+  <div class="card">
+    <div class="k">Diagnóstico</div>
+    <div id="diag" class="notice"></div>
+  </div>
+  <div class="card">
+    <div class="k">Respaldo y navegación</div>
+    <button class="btn" onclick="downloadJson()">Descargar JSON</button>
+    <button class="btn btn2" onclick="location.href='app-integrada-v8.html'">Ir a carga masiva v8</button>
+    <button class="btn btn2" onclick="location.href='app-integrada-v7.html'">Ir app completa v7</button>
+  </div>
+</section>
+<script>
+const STORE='finanzas_integrada_v5_fix_mes_utm';
+const UF={
+ '2025-01':38420,'2025-02':38540,'2025-03':38640,'2025-04':38760,'2025-05':38890,'2025-06':39010,'2025-07':39120,'2025-08':39220,'2025-09':39320,'2025-10':39410,'2025-11':39520,'2025-12':39720,
+ '2026-01':39840,'2026-02':39960,'2026-03':40100,'2026-04':40240,'2026-05':40380,'2026-06':40520,'2026-07':40660,'2026-08':40800,'2026-09':40940,'2026-10':41080,'2026-11':41220,'2026-12':41360
+};
+let S=load();
+function $(id){return document.getElementById(id)}
+function money(n){return '$'+Math.round(+n||0).toLocaleString('es-CL')}
+function clp(v){if(typeof v==='number')return Math.round(v)||0;let s=String(v||'').trim(),neg=s[0]=='-'||/\(.+\)/.test(s);s=s.replace(/[^\d,.-]/g,'');if(!s)return 0;let p=s.split(/[,.]/),last=p[p.length-1],hasDec=p.length>1&&last.length<=2,n=hasDec?Number(p.slice(0,-1).join('').replace(/\D/g,'')+'.'+last.replace(/\D/g,'')):Number(s.replace(/\D/g,''));return Math.round((neg?-1:1)*(n||0))}
+function ym(d){return String(d||'').slice(0,7)}
+function year(d){return +String(d||'').slice(0,4)||new Date().getFullYear()}
+function load(){try{return normalize(JSON.parse(localStorage.getItem(STORE))||seed())}catch(e){return seed()}}
+function seed(){return{records:[],rentas:[],obligations:[],payments:[]}}
+function normalize(s){s.records=s.records||[];s.rentas=s.rentas||[];s.records.forEach((r,i)=>{if(!r.id)r.id='r_old_'+i;if(r.type!=='flow'&&!r.taxYear){let py=year(r.paymentDate);r.taxYear=r.type==='bonus'?py:py+1}if(r.type!=='flow'&&!r.rentaYear)r.rentaYear=r.taxYear-1});return s}
+function save(){localStorage.setItem(STORE,JSON.stringify(S))}
+function setDefaultAdjDate(){let at=clp($('taxYear').value)||2026;let d=`${at-1}-12-31`;$('adjDate').value=d;$('adjUf').value=UF[`${at-1}-12`]||''}
+function ufForDate(d){let m=ym(d);return Number(UF[m])||0}
+function factorFor(r){let uPay=Number(r.ufValue)||ufForDate(r.paymentDate)||ufForDate(r.paidMonth+'-01');let uAdj=Number(String($('adjUf').value).replace(',','.'))||ufForDate($('adjDate').value);return {uPay,uAdj,factor:(uPay&&uAdj)?uAdj/uPay:1}}
+function isTax(r){return r&&r.isTaxable!==false&&r.type!=='flow'}
+function currentF22(at){return S.rentas.find(x=>+x.taxYear===+at)||{taxYear:at,baseF22:0,creditIusc:0}}
+function saveF22(){let at=clp($('taxYear').value),r={taxYear:at,baseF22:clp($('baseF22').value),creditIusc:clp($('taxF22').value),source:'Manual v9'};S.rentas=S.rentas.filter(x=>+x.taxYear!==at);S.rentas.push(r);save();$('f22Msg').textContent='Valores F22 guardados para AT '+at+'.';render()}
+function render(){let at=clp($('taxYear').value)||2026;if(!$('adjDate').value)setDefaultAdjDate();let R=S.records.filter(r=>isTax(r)&&+r.taxYear===at).sort((a,b)=>String(a.paymentDate).localeCompare(String(b.paymentDate)));let rows=R.map(r=>{let f=factorFor(r);let base=clp(r.taxableBaseClp),tax=clp(r.withheldTaxClp);return{r,...f,base,tax,baseAdj:Math.round(base*f.factor),taxAdj:Math.round(tax*f.factor)}});let baseNom=rows.reduce((s,x)=>s+x.base,0),taxNom=rows.reduce((s,x)=>s+x.tax,0),baseAdj=rows.reduce((s,x)=>s+x.baseAdj,0),taxAdj=rows.reduce((s,x)=>s+x.taxAdj,0),f22=currentF22(at),fb=clp(f22.baseF22),ft=clp(f22.creditIusc);$('baseNom').textContent=money(baseNom);$('taxNom').textContent=money(taxNom);$('baseAdj').textContent=money(baseAdj);$('taxAdj').textContent=money(taxAdj);$('baseF22View').textContent=money(fb);$('taxF22View').textContent=money(ft);$('baseDiff').textContent=money(baseAdj-fb);$('taxDiff').textContent=money(taxAdj-ft);$('baseF22').value=fb||'';$('taxF22').value=ft||'';
+$('tbl').innerHTML=rows.length?'<table><tr><th>Pago</th><th>Tipo</th><th>Detalle</th><th>Base nominal</th><th>Imp. nominal</th><th>UF pago</th><th>UF actualización</th><th>Factor</th><th>Base reajustada</th><th>Imp. reajustado</th><th>Renta</th><th>AT</th></tr>'+rows.map(x=>`<tr><td>${x.r.paymentDate}</td><td>${x.r.type==='bonus'?'Bono':'Sueldo'}</td><td>${x.r.description||''}</td><td class="money">${money(x.base)}</td><td class="money">${money(x.tax)}</td><td>${x.uPay?x.uPay.toFixed(2):'—'}</td><td>${x.uAdj?x.uAdj.toFixed(2):'—'}</td><td>${x.factor.toFixed(5)}</td><td class="money">${money(x.baseAdj)}</td><td class="money">${money(x.taxAdj)}</td><td>${x.r.rentaYear||''}</td><td>${x.r.taxYear||''}</td></tr>`).join('')+'</table>':'<p class="note">No hay registros para este AT.</p>';
+let msg=[];msg.push('Registros AT: '+R.length+'. Si son 13, tienes 12 liquidaciones más bono.');msg.push('La columna nueva calcula el reajuste automáticamente con UF de fecha de pago versus UF de fecha de actualización/impuesto.');if(fb){let before=baseNom-fb,after=baseAdj-fb;msg.push('Diferencia antes del reajuste: '+money(before)+'. Diferencia después del reajuste: '+money(after)+'.');}msg.push('Importante: para cuadrar exacto, revisa que la UF de cada mes y la UF de actualización sean las oficiales. Puedes corregir la UF de actualización arriba; en la próxima versión puedo agregar una tabla editable de UF por mes.');$('diag').innerHTML=msg.map(x=>'<p>'+x+'</p>').join('')}
+function downloadJson(){let a=document.createElement('a'),b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});a.href=URL.createObjectURL(b);a.download='finanzas_v9_reajuste.json';a.click();URL.revokeObjectURL(a.href)}
+setDefaultAdjDate();render();
+</script>
+</body>
+</html>
