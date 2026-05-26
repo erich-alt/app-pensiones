@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lector Renta SII v7</title>
+<link rel="stylesheet" href="ingresos-pension.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>textarea{min-height:180px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}.small{font-size:13px}.cand button{padding:8px 10px;margin:2px;border:1px solid #d7e0ee;background:white;border-radius:10px}.cand b{color:#0f2740}</style>
+</head>
+<body>
+<div class="top">
+  <h1>Lector Renta SII v7</h1>
+  <div class="sub">Lector robusto para completar la app Renta y Gastos v6 con datos del F22/DJ1887 descargado desde SII.</div>
+  <span class="pill">F22</span><span class="pill">DJ1887</span><span class="pill">Candidatos</span><span class="pill">Pegar texto</span>
+</div>
+<section class="on">
+  <div class="card">
+    <div class="k">1. Cargar o pegar renta/F22/DJ1887</div>
+    <p class="note">Si el PDF del SII viene como imagen o Safari no entrega texto, pega abajo el texto copiado desde la pantalla del SII. Esta pantalla guarda los datos en la misma base local usada por la app completa.</p>
+    <div class="row">
+      <div><label>AT</label><input id="at" value="2026"></div>
+      <div><label>PDF renta/F22/DJ1887</label><input id="pdf" type="file" accept=".pdf"></div>
+      <div style="align-self:end"><button class="btn btn2" onclick="readPdf()">Leer PDF</button></div>
+      <div style="align-self:end"><button class="btn" onclick="parseText()">Analizar texto</button></div>
+    </div>
+    <label>Texto leído / pegado</label>
+    <textarea id="raw" placeholder="Aquí aparecerá el texto del PDF. También puedes pegar el texto copiado desde SII."></textarea>
+    <div id="msg" class="notice">Esperando PDF o texto.</div>
+  </div>
+
+  <div class="card">
+    <div class="k">2. Datos detectados</div>
+    <div class="row">
+      <div><label>Base SII/F22 actualizada</label><input id="bb"></div>
+      <div><label>Imp. pagado SII/F22 actualizado</label><input id="bt"></div>
+      <div><label>Impuesto calculado F22</label><input id="fc"></div>
+      <div><label>Resultado devolución/pago</label><input id="fr"></div>
+    </div>
+    <div class="row">
+      <div style="align-self:end"><button class="btn btnG" onclick="saveToApp()">Guardar en app completa</button></div>
+      <div style="align-self:end"><button class="btn btn2" onclick="location.href='renta-gastos-v6.html'">Volver a Renta y Gastos</button></div>
+    </div>
+    <div id="summary" class="notice">Revisa los campos antes de guardar.</div>
+  </div>
+
+  <div class="card">
+    <div class="k">3. Candidatos encontrados</div>
+    <p class="note">Si la app no eligió bien, toca el monto correcto en la fila correspondiente.</p>
+    <div id="candidates" class="scroll cand"></div>
+  </div>
+</section>
+<script>
+const STORE='renta_full_clean_2';
+const UTA2025=834504;
+let lastNumbers=[];
+function $(id){return document.getElementById(id)}
+function clp(v){if(typeof v==='number')return Math.round(v)||0;let s=String(v||'').replace(/[^0-9,.-]/g,'');if(!s)return 0;let p=s.split(/[,.]/),l=p[p.length-1],dec=p.length>1&&l.length<=2,n=dec?Number(p.slice(0,-1).join('').replace(/\D/g,'')+'.'+l.replace(/\D/g,'')):Number(s.replace(/\D/g,''));return Math.round(n||0)}
+function money(n){let x=clp(n),neg=x<0;return(neg?'-':'')+'$'+Math.abs(x).toLocaleString('es-CL')}
+function clean(t){return String(t||'').replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ').replace(/\n+/g,'\n')}
+async function readPdf(){let f=$('pdf').files[0];if(!f){$('msg').textContent='Selecciona un PDF.';return}try{pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';let doc=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise,t='';for(let i=1;i<=doc.numPages;i++){let p=await doc.getPage(i),c=await p.getTextContent();t+=c.items.map(x=>x.str).join('\n')+'\n'}$('raw').value=t;if(clean(t).length<150){$('msg').innerHTML='<p class="bad">El PDF casi no entregó texto. Puede venir como imagen. Prueba descargar el PDF original desde SII o pega el texto de la pantalla.</p>'}else{$('msg').textContent='PDF leído. Analizando...'}parseText()}catch(e){$('msg').textContent='No pude leer PDF: '+(e.message||e)}}
+function numbersAll(t){let c=clean(t);let arr=(c.match(/-?\d{1,3}(?:\.\d{3})+/g)||[]).map(clp).filter(x=>x>0);return [...new Set(arr)].sort((a,b)=>b-a)}
+function numbersNear(c,re,b=180,a=420){let m=c.match(re);if(!m)return[];let i=m.index||0,w=c.slice(Math.max(0,i-b),Math.min(c.length,i+a));return numbersAll(w)}
+function pick(arr,min,max,avoid){return arr.find(x=>x>=min&&x<=max&&(!avoid||Math.abs(x-avoid)>100000))||0}
+function igc(base){let u=base/UTA2025,tab=[[13.5,0,0],[30,.04,.54],[50,.08,1.74],[70,.135,4.49],[90,.23,11.14],[120,.304,17.80],[310,.35,23.32],[999999,.40,38.82]],r=tab.find(x=>u<=x[0]);return Math.max(0,Math.round(base*r[1]-r[2]*UTA2025))}
+function appState(){try{let s=JSON.parse(localStorage.getItem(STORE))||{};s.r=s.r||[];s.m=s.m||{};s.model=s.model||{};s.expenses=s.expenses||[];s.credits=s.credits||[];return s}catch(e){return{r:[],m:{},model:{},expenses:[],credits:[]}}}
+function appCalcTaxNominal(at){let s=appState();return (s.r||[]).filter(r=>r&&r.type!=='flow').reduce((sum,r)=>sum+clp(r.tax),0)}
+function parseText(){let c=clean($('raw').value);if(!c){$('msg').textContent='Pega texto o carga un PDF.';return}let at=(c.match(/AÑO\s+TRIBUTARIO\s+(20\d{2})/i)||c.match(/AT\s*(20\d{2})/i)||[])[1];if(at)$('at').value=at;let atn=clp($('at').value)||2026;
+lastNumbers=numbersAll(c);
+let baseCand=[...numbersNear(c,/Renta\s+Total\s+Neta\s+Pagada/i),...numbersNear(c,/Renta\s+Total\s+Neta\s+Gravada/i),...numbersNear(c,/MONTOS?\s+ANUALES?\s+ACTUALIZADOS?/i),...numbersNear(c,/\b170\b/i),...numbersNear(c,/\b1098\b/i),...lastNumbers.filter(x=>x>10000000)];
+let base=Math.max(0,...baseCand.filter(x=>x>10000000&&x<500000000));
+let taxCand=[...numbersNear(c,/Impuesto\s+[UÚuú]nico\s+de\s+Segunda\s+Categor/i),...numbersNear(c,/Impuesto\s+[UÚuú]nico.*Retenido/i),...numbersNear(c,/Cr[eé]dito\s+IUSC/i),...numbersNear(c,/\b162\b/i),...lastNumbers.filter(x=>x>1000000&&x<30000000)];
+let appTax=appCalcTaxNominal(atn);let tax=pick(taxCand,1000000,base?base*0.5:30000000,base);if(!tax&&appTax)tax=Math.round(appTax*1.012);
+let calcCand=[...numbersNear(c,/Impuesto\s+Global\s+Complementario/i),...numbersNear(c,/Impuesto\s+determinado/i),...numbersNear(c,/Impuesto\s+calculado/i),...numbersNear(c,/Impuesto\s+anual/i)];
+let fc=pick(calcCand,100000,base?base*0.5:30000000,base)||igc(base);
+let resCand=[...numbersNear(c,/Devoluci[oó]n\s+solicitada/i),...numbersNear(c,/Monto\s+devoluci[oó]n/i),...numbersNear(c,/Saldo\s+a\s+favor/i),...numbersNear(c,/Resultado/i),...numbersNear(c,/Pago\s+de\s+impuestos/i)];
+let fr=pick(resCand,1000,10000000,base);
+if(base)$('bb').value=base;if(tax)$('bt').value=tax;if(fc)$('fc').value=fc;if(fr)$('fr').value=fr;
+$('summary').innerHTML=`Detectado: Base <b>${money(base)}</b> · Impuesto pagado <b>${money(tax)}</b> · Impuesto calculado <b>${money(fc)}</b> · Resultado <b>${money(fr)}</b>.`;
+renderCandidates(baseCand,taxCand,calcCand,resCand);$('msg').textContent='Texto analizado. Revisa candidatos y guarda.'}
+function renderCandidates(baseCand,taxCand,calcCand,resCand){function row(title,field,arr){let vals=[...new Set(arr.filter(x=>x>0))].sort((a,b)=>b-a).slice(0,12);return `<h3>${title}</h3>`+(vals.length?vals.map(v=>`<button onclick="setField('${field}',${v})">${money(v)}</button>`).join(' '):'<p class="note">Sin candidatos.</p>')}$('candidates').innerHTML=row('Base actualizada', 'bb', baseCand)+row('Impuesto pagado actualizado', 'bt', taxCand)+row('Impuesto calculado F22', 'fc', calcCand)+row('Resultado devolución/pago', 'fr', resCand)+`<h3>Todos los montos grandes encontrados</h3>${lastNumbers.slice(0,30).map(v=>`<button onclick="setAny(${v})">${money(v)}</button>`).join(' ')}`}
+function setField(id,v){$(id).value=v;$('summary').textContent='Campo actualizado manualmente con candidato.'}
+function setAny(v){$('summary').innerHTML=`Monto seleccionado ${money(v)}. Toca un campo y pégalo manualmente, o usa los botones por categoría.`}
+function saveToApp(){let at=clp($('at').value)||2026;let s=appState();s.model[String(at)]={...(s.model[String(at)]||{}),bb:clp($('bb').value),bt:clp($('bt').value),fc:clp($('fc').value),fr:clp($('fr').value)};localStorage.setItem(STORE,JSON.stringify(s));$('summary').innerHTML=`Guardado en app completa para AT ${at}. Base ${money(s.model[String(at)].bb)} · Impuesto pagado ${money(s.model[String(at)].bt)} · Impuesto calculado ${money(s.model[String(at)].fc)} · Resultado ${money(s.model[String(at)].fr)}.`}
+(function init(){let s=appState(),at='2026';$('at').value=at;let m=s.model?.[at]||{};if(m.bb)$('bb').value=m.bb;if(m.bt)$('bt').value=m.bt;if(m.fc)$('fc').value=m.fc;if(m.fr)$('fr').value=m.fr})();
+</script>
+</body></html>
