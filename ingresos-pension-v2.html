@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ingresos v2">
+<title>Ingresos y Flujo v2</title>
+<link rel="stylesheet" href="ingresos-pension.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+<div class="top">
+  <h1>Ingresos, renta y flujo v2</h1>
+  <div class="sub">Versión de prueba en línea. Incluye obligaciones mensuales, pensión en UTM, pagos de arriendo/deuda/gastos fijos y cálculo preliminar UF tributario.</div>
+  <span class="pill">Pensión UTM</span><span class="pill">Flujo mensual</span><span class="pill">Deudas</span><span class="pill">Renta/F22</span>
+</div>
+
+<section id="sDash" class="on">
+  <div class="card">
+    <div class="row">
+      <div><label>Año</label><input id="year" type="number" value="2026"></div>
+      <div><label>Vista</label><select id="scope"><option value="pay">Año pago/caja</option><option value="income">Año renta/gestión</option><option value="tax">Año tributario</option></select></div>
+      <div style="align-self:end"><button class="btn" onclick="render()">Actualizar</button></div>
+      <div style="align-self:end"><button class="btn btn2" onclick="nav('sFlow')">Ir a flujo</button></div>
+    </div>
+  </div>
+  <div class="grid card">
+    <div><div class="k">Ingreso líquido / flujo</div><div class="v mono" id="mNet">$0</div></div>
+    <div><div class="k">Base tributable</div><div class="v mono warn" id="mBase">$0</div></div>
+    <div><div class="k">Impuesto</div><div class="v mono" id="mTax">$0</div></div>
+    <div><div class="k">Obligaciones mes</div><div class="v mono good" id="mObl">$0</div></div>
+  </div>
+  <div class="card"><div class="k">Ingresos registrados</div><div id="incomeTable" class="scroll"></div></div>
+</section>
+
+<section id="sImport">
+  <div class="card">
+    <div class="k">Importar Excel histórico</div>
+    <p class="note">Carga tu Excel anual. “Ing Extra” queda como flujo no tributable. El bono “Año Siguiente” queda como pago al año siguiente y renta del año del archivo.</p>
+    <div class="row">
+      <div><label>Archivo Excel</label><input type="file" id="xls" accept=".xlsx,.xls,.csv"></div>
+      <div><label>Año renta/gestión</label><input id="xlsYear" type="number" placeholder="2025"></div>
+      <div><label>Fecha pago</label><select id="payDay"><option value="last">Fin de mes</option><option value="5">Día 5</option><option value="15">Día 15</option><option value="30">Día 30</option></select></div>
+      <div style="align-self:end"><button class="btn btn2" onclick="readExcel()">Leer Excel</button></div>
+    </div>
+    <div id="xlsMsg" class="notice">Esperando archivo.</div>
+  </div>
+  <div class="card hide" id="prevX"><div class="k">Vista previa</div><div id="tblPrev" class="scroll"></div><button class="btn btnG" onclick="saveExcel()">Guardar registros</button></div>
+</section>
+
+<section id="sFlow">
+  <div class="card">
+    <div class="k">Flujo mensual y obligaciones</div>
+    <p class="note">La pensión se calcula como 21,1108 UTM por defecto. Para cada mes usa el valor UTM de ese mes. Puedes agregar arriendo, deuda, tarjetas u otros gastos fijos.</p>
+    <div class="row">
+      <div><label>Mes</label><input type="month" id="flowMonth"></div>
+      <div><label>Ingreso líquido caja</label><input id="flowIncome" placeholder="opcional"></div>
+      <div style="align-self:end"><button class="btn" onclick="renderFlow()">Actualizar</button></div>
+      <div style="align-self:end"><button class="btn btn2" onclick="seedPension()">Pensión 21,1108 UTM</button></div>
+    </div>
+  </div>
+  <div class="grid card">
+    <div><div class="k">Total obligaciones</div><div class="v mono" id="fDue">$0</div></div>
+    <div><div class="k">Pagado</div><div class="v mono good" id="fPaid">$0</div></div>
+    <div><div class="k">Pendiente</div><div class="v mono bad" id="fPending">$0</div></div>
+    <div><div class="k">Flujo libre</div><div class="v mono" id="fFree">$0</div></div>
+  </div>
+  <div class="card">
+    <div class="k">Agregar obligación</div>
+    <div class="row">
+      <div><label>Nombre</label><input id="obName" placeholder="Arriendo, crédito, tarjeta"></div>
+      <div><label>Tipo</label><select id="obType"><option value="pension">Pensión</option><option value="arriendo">Arriendo</option><option value="deuda">Deuda</option><option value="tarjeta">Tarjeta</option><option value="fijo">Gasto fijo</option><option value="otro">Otro</option></select></div>
+      <div><label>Moneda</label><select id="obCurrency"><option>CLP</option><option>UF</option><option>UTM</option></select></div>
+      <div><label>Monto</label><input id="obAmount" placeholder="21,1108 o 500000"></div>
+    </div>
+    <button class="btn btnG" onclick="addObligation()">Guardar obligación</button>
+  </div>
+  <div class="card">
+    <div class="k">Registrar pago</div>
+    <div class="row">
+      <div><label>Obligación</label><select id="payObl"></select></div>
+      <div><label>Mes asociado</label><input type="month" id="payMonth"></div>
+      <div><label>Monto pagado</label><input id="payAmount" placeholder="vacío = automático"></div>
+      <div><label>Nota</label><input id="payNote"></div>
+    </div>
+    <button class="btn btnG" onclick="payObligation()">Guardar pago</button>
+  </div>
+  <div class="card"><div class="k">Detalle obligaciones</div><div id="oblTable" class="scroll"></div></div>
+</section>
+
+<section id="sTax">
+  <div class="card">
+    <div class="k">Reajuste UF tributario preliminar</div>
+    <p class="note">Convierte base/impuesto mensual a UF del mes y lo reexpresa a la UF de cierre del AT. Puedes ingresar manualmente la UF de cierre oficial.</p>
+    <div class="row">
+      <div><label>Año tributario</label><input id="ufTaxYear" type="number" value="2026"></div>
+      <div><label>UF cierre AT</label><input id="ufClose" placeholder="Ej: 40000"></div>
+      <div style="align-self:end"><button class="btn" onclick="calcUfTax()">Calcular</button></div>
+      <div><label>Diferencia vs F22</label><div class="v mono" id="ufDiff">$0</div></div>
+    </div>
+  </div>
+  <div class="card"><div class="k">Detalle reajustado</div><div id="ufTaxTbl" class="scroll"></div></div>
+</section>
+
+<section id="sBack">
+  <div class="card">
+    <div class="k">Respaldo</div>
+    <button class="btn" onclick="downloadJson()">Descargar JSON</button>
+    <label>Importar JSON</label><input type="file" id="json" accept=".json"><button class="btn btn2" onclick="importJson()">Importar JSON</button>
+    <button class="btn btnB" onclick="clearAll()">Borrar datos locales</button>
+    <div id="bMsg" class="notice">Datos guardados localmente.</div>
+  </div>
+</section>
+
+<nav class="nav">
+  <button class="on" data-t="sDash">Resumen</button>
+  <button data-t="sImport">Importar</button>
+  <button data-t="sFlow">Flujo</button>
+  <button data-t="sTax">UF/SII</button>
+  <button data-t="sBack">Respaldo</button>
+</nav>
+
+<script>
+const STORE='ingresos_pension_v2_2026_05';
+const UTM={'2025-05':70588,'2025-06':71506,'2026-05':70588,'2026-06':71506,'2026-07':71506,'2026-08':71506,'2026-09':71506,'2026-10':71506,'2026-11':71506,'2026-12':71506};
+const UF={'2025-01':38416,'2025-02':38430,'2025-03':38609,'2025-04':38894,'2025-05':39106,'2025-06':39267,'2025-07':39376,'2025-08':39485,'2025-09':39625,'2025-10':39765,'2025-11':39880,'2025-12':40000,'2026-01':40120,'2026-02':40260,'2026-03':40420,'2026-04':40580,'2026-05':40740,'2026-06':40900,'2026-07':41050,'2026-08':41200,'2026-09':41350,'2026-10':41500,'2026-11':41650,'2026-12':41800};
+const meses={ENERO:1,FEBRERO:2,MARZO:3,ABRIL:4,MAYO:5,JUNIO:6,JULIO:7,AGOSTO:8,SEPTIEMBRE:9,SETIEMBRE:9,OCTUBRE:10,NOVIEMBRE:11,DICIEMBRE:12};
+const mn=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+let S=load(), xprev=[];
+function $(id){return document.getElementById(id)}
+function clp(v){if(typeof v==='number')return Math.round(v)||0;let s=String(v||'').trim();let neg=s[0]=='-'||/\(.+\)/.test(s);s=s.replace(/[^\d,.-]/g,'');if(!s)return 0;let p=s.split(/[,.]/),last=p[p.length-1],hasDec=p.length>1&&last.length<=2;let n=hasDec?Number(p.slice(0,-1).join('').replace(/\D/g,'')+'.'+last.replace(/\D/g,'')):Number(s.replace(/\D/g,''));return Math.round((neg?-1:1)*(n||0))}
+function money(n){return '$'+Math.round(+n||0).toLocaleString('es-CL')}
+function ym(d){return String(d||'').slice(0,7)} function y(d){return +String(d||'').slice(0,4)||new Date().getFullYear()} function ld(Y,M){return new Date(Y,M,0).getDate()}
+function load(){try{return JSON.parse(localStorage.getItem(STORE))||seed()}catch(e){return seed()}}
+function seed(){return{records:[],obligations:[{id:'obl_pension',name:'Pensión alimentos',type:'pension',currency:'UTM',amount:21.1108,active:true}],payments:[],rentas:[]}}
+function save(){localStorage.setItem(STORE,JSON.stringify(S));render();renderFlow();}
+function nav(id){document.querySelectorAll('section').forEach(s=>s.classList.remove('on'));$(id).classList.add('on');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===id));render();renderFlow()}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>nav(b.dataset.t));
+function nk(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim()}
+function pick(o,a){for(let w of a){for(let k in o){let A=nk(k),B=nk(w);if(A===B||A.replace(/_\d+$/,'')===B)return o[k]}}return''}
+function fmonth(v){let t=nk(v).toUpperCase();for(let k in meses)if(t.includes(k))return meses[k];let n=+v;return n>=1&&n<=12?n:0}
+function gyear(name){let m=String(name).match(/20\d{2}/);return m?+m[0]:new Date().getFullYear()}
+function payDate(Y,M){let d=$('payDay').value,dd=d==='last'?ld(Y,M):Math.min(+d,ld(Y,M));return `${Y}-${String(M).padStart(2,'0')}-${String(dd).padStart(2,'0')}`}
+function isTax(r){return r.isTaxable!==false&&r.type!=='flow'} function isRealTax(r){return isTax(r)&&!r.isProjected}
+function inScope(r,scope,Y){if(scope==='pay')return y(r.paymentDate)===Y;if(scope==='income')return +r.managementYear===Y;if(scope==='tax')return isTax(r)&&+r.taxYear===Y}
+function render(){let Y=+$('year').value||new Date().getFullYear(),scope=$('scope').value,R=S.records.filter(r=>inScope(r,scope,Y));let taxR=R.filter(isTax),net=R.reduce((s,r)=>s+clp(r.netClp),0),base=taxR.reduce((s,r)=>s+clp(r.taxableBaseClp),0),tax=taxR.reduce((s,r)=>s+clp(r.withheldTaxClp),0);$('mNet').textContent=money(net);$('mBase').textContent=money(base);$('mTax').textContent=money(tax);$('mObl').textContent=money(totalDue(ym(new Date().toISOString())));$('incomeTable').innerHTML=tbl(R)}
+function tbl(a){if(!a.length)return'<p class="note">Sin registros.</p>';return'<table><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Líquido/flujo</th><th>Base</th><th>Imp.</th></tr>'+a.map(r=>`<tr><td>${r.paymentDate}<br><span class="note">Renta ${r.managementYear} ${isTax(r)?'AT '+r.taxYear:'No AT'}</span></td><td>${r.type}${r.isProjected?'<br><span class="warn">Proyectado</span>':''}</td><td>${r.description||''}</td><td class="money">${money(r.netClp)}</td><td class="money">${isTax(r)?money(r.taxableBaseClp):'—'}</td><td class="money">${isTax(r)?money(r.withheldTaxClp):'—'}</td></tr>`).join('')+'</table>'}
+async function readExcel(){let f=$('xls').files[0];if(!f)return $('xlsMsg').textContent='Selecciona archivo.';let wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true});let rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:'',raw:false});let incomeYear=clp($('xlsYear').value)||gyear(f.name);$('xlsYear').value=incomeYear;xprev=[];let curY=new Date().getFullYear();rows.forEach((r,i)=>{let M=fmonth(pick(r,['Mes','Periodo','Month']));if(!M)return;let label=nk(pick(r,['Mes','Periodo','Month']));if(label==='total')return;let gross=clp(pick(r,['Total Haberes','Haberes'])),base=clp(pick(r,['Afecto a Impuesto','Afecto Impuesto','Base Tributable','Tributable'])),tax=clp(pick(r,['Impuesto','Impuesto Retenido'])),liq=clp(pick(r,['Liquido','Líquido','Ingreso Liquido','Ingreso Líquido']));let isBonus=label.includes('bono'),isNext=label.includes('ano siguiente')||label.includes('año siguiente'),payY=isNext?incomeYear+1:incomeYear,type=isBonus?'bonus':'salary',isProj=isNext&&incomeYear>=curY,d=payDate(payY,M);if(gross||base||tax||liq)xprev.push({id:'r'+Date.now()+i,paymentDate:d,type,managementYear:incomeYear,taxYear:incomeYear+1,description:isBonus?`Bono gestión ${incomeYear} pagado ${payY}`:`Liquidación ${mn[M]} ${incomeYear}`,netClp:liq,taxableBaseClp:base,withheldTaxClp:tax,isProjected:isProj,isTaxable:true});Object.keys(r).filter(k=>nk(k).startsWith('ing extra')).forEach((k,j)=>{let a=clp(r[k]);if(a>0)xprev.push({id:'f'+Date.now()+i+j,paymentDate:d,type:'flow',managementYear:incomeYear,taxYear:null,description:'Flujo no tributable: '+(pick(r,['Motivo','Motivo_'+(j+1)])||'Ingreso extra'),netClp:a,taxableBaseClp:0,withheldTaxClp:0,isTaxable:false})})});$('tblPrev').innerHTML=tbl(xprev);$('prevX').classList.remove('hide');$('xlsMsg').textContent=`Leídos ${xprev.length} registros.`}
+function saveExcel(){S.records.push(...xprev);xprev=[];$('prevX').classList.add('hide');save();nav('sDash')}
+function unit(cur,m){if(cur==='UTM')return UTM[m]||0;if(cur==='UF')return UF[m]||0;return 1} function due(o,m){return Math.round(Number(o.amount||0)*unit(o.currency,m))}
+function totalDue(m){return S.obligations.filter(o=>o.active!==false).reduce((s,o)=>s+due(o,m),0)}
+function seedPension(){let p=S.obligations.find(o=>o.id==='obl_pension');if(!p)S.obligations.push({id:'obl_pension',name:'Pensión alimentos',type:'pension',currency:'UTM',amount:21.1108,active:true});else{p.amount=21.1108;p.currency='UTM'}save()}
+function addObligation(){S.obligations.push({id:'o'+Date.now(),name:$('obName').value||'Obligación',type:$('obType').value,currency:$('obCurrency').value,amount:Number(String($('obAmount').value).replace(',','.'))||0,active:true});save()}
+function payObligation(){let id=$('payObl').value,m=$('payMonth').value,o=S.obligations.find(x=>x.id===id);if(!o)return;let amt=clp($('payAmount').value)||due(o,m);S.payments.push({id:'p'+Date.now(),obligationId:id,month:m,amount:amt,note:$('payNote').value||''});save()}
+function renderFlow(){let m=$('flowMonth').value||new Date().toISOString().slice(0,7);$('flowMonth').value=m;$('payMonth').value=$('payMonth').value||m;let income=clp($('flowIncome').value)||S.records.filter(r=>ym(r.paymentDate)===m).reduce((s,r)=>s+clp(r.netClp),0);let rows=S.obligations.filter(o=>o.active!==false).map(o=>{let d=due(o,m),p=S.payments.filter(x=>x.obligationId===o.id&&x.month===m).reduce((s,x)=>s+clp(x.amount),0);return{...o,due:d,paid:p,pending:d-p,unit:unit(o.currency,m)}});let D=rows.reduce((s,o)=>s+o.due,0),P=rows.reduce((s,o)=>s+o.paid,0);$('fDue').textContent=money(D);$('fPaid').textContent=money(P);$('fPending').textContent=money(D-P);$('fFree').textContent=money(income-D);$('payObl').innerHTML=S.obligations.map(o=>`<option value="${o.id}">${o.name}</option>`).join('');$('oblTable').innerHTML='<table><tr><th>Obligación</th><th>Moneda</th><th>Monto</th><th>Valor mes</th><th>Debe</th><th>Pagado</th><th>Pendiente</th></tr>'+rows.map(o=>`<tr><td>${o.name}<br><span class="note">${o.type}</span></td><td>${o.currency}</td><td>${o.amount}</td><td>${o.currency==='CLP'?'—':money(o.unit)}</td><td>${money(o.due)}</td><td>${money(o.paid)}</td><td>${money(o.pending)}</td></tr>`).join('')+'</table>'}
+function calcUfTax(){let ty=+$('ufTaxYear').value,close=Number(String($('ufClose').value).replace(',','.'))||UF[(ty-1)+'-12']||0,rows=S.records.filter(r=>isRealTax(r)&&+r.taxYear===ty).map(r=>{let u=Number(r.ufValue)||UF[ym(r.paymentDate)]||0,base=clp(r.taxableBaseClp),tax=clp(r.withheldTaxClp),adj=u&&close?Math.round(base/u*close):base,adjTax=u&&close?Math.round(tax/u*close):tax;return{r,u,base,tax,adj,adjTax}});let baseAdj=rows.reduce((s,x)=>s+x.adj,0),taxAdj=rows.reduce((s,x)=>s+x.adjTax,0);$('ufDiff').textContent=money(baseAdj);$('ufTaxTbl').innerHTML='<p class="note">Base reajustada: <b>'+money(baseAdj)+'</b> · Impuesto reajustado: <b>'+money(taxAdj)+'</b></p><table><tr><th>Fecha</th><th>Detalle</th><th>UF mes</th><th>Base nominal</th><th>Base reaj.</th><th>Imp. reaj.</th></tr>'+rows.map(x=>`<tr><td>${x.r.paymentDate}</td><td>${x.r.description||''}</td><td>${x.u||'—'}</td><td>${money(x.base)}</td><td>${money(x.adj)}</td><td>${money(x.adjTax)}</td></tr>`).join('')+'</table>'}
+function downloadJson(){let a=document.createElement('a'),b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});a.href=URL.createObjectURL(b);a.download='respaldo_v2.json';a.click();URL.revokeObjectURL(a.href)}
+async function importJson(){try{S=JSON.parse(await $('json').files[0].text());save();$('bMsg').textContent='Importado.'}catch(e){$('bMsg').textContent='No pude importar.'}}
+function clearAll(){if(confirm('¿Borrar datos locales v2?')){S=seed();save()}}
+(function init(){let m=new Date().toISOString().slice(0,7);$('flowMonth').value=m;$('payMonth').value=m;render();renderFlow()})();
+</script>
+</body></html>
