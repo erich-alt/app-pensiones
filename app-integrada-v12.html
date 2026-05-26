@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Finanzas Pro v12 - Banco/SII</title>
+<link rel="stylesheet" href="ingresos-pension.css">
+</head>
+<body>
+<div class="top">
+  <h1>Finanzas Pro v12 - Cuadratura Banco/SII</h1>
+  <div class="sub">Separa correctamente DJ 1887 informada por el banco versus Formulario 22. Usa la misma data local ya cargada.</div>
+  <span class="pill">DJ 1887</span><span class="pill">Banco Itaú</span><span class="pill">Base actualizada</span><span class="pill">Impuesto actualizado</span>
+</div>
+<section class="on">
+  <div class="card">
+    <div class="k">Año Tributario</div>
+    <div class="row">
+      <div><label>Año Tributario</label><input id="taxYear" type="number" value="2026" onchange="render()"></div>
+      <div style="align-self:end"><button class="btn" onclick="render()">Actualizar</button></div>
+      <div style="align-self:end"><button class="btn btn2" onclick="location.href='app-integrada-v8.html'">Carga masiva</button></div>
+      <div style="align-self:end"><button class="btn btn2" onclick="location.href='app-integrada-v9.html'">Reajuste UF</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="k">DJ 1887 / dato Banco informado</div>
+    <p class="note">Ingresa acá los datos de la pantalla “Detalle información proporcionada por sus agentes retenedores”. Esto NO es lo mismo que el resultado/devolución del Formulario 22.</p>
+    <div class="row">
+      <div><label>Renta total neta pagada actualizada</label><input id="djBase" placeholder="66064422"></div>
+      <div><label>Impuesto Único 2ª Categoría retenido actualizado</label><input id="djTax" placeholder="6056557"></div>
+      <div><label>Resultado/devolución F22, opcional</label><input id="f22Result" placeholder="158114"></div>
+      <div style="align-self:end"><button class="btn btnG" onclick="saveDJ()">Guardar DJ/Banco</button></div>
+    </div>
+    <div id="msg" class="notice">En tus fotos: Base actualizada 66.064.422 e Impuesto Único actualizado 6.056.557. El 158.114 no corresponde al impuesto retenido actualizado.</div>
+  </div>
+  <div class="grid card">
+    <div><div class="k">Base nominal app</div><div class="v mono warn" id="baseNom">$0</div></div>
+    <div><div class="k">Base Banco actualizada</div><div class="v mono warn" id="baseBank">$0</div></div>
+    <div><div class="k">Diferencia base nominal</div><div class="v mono" id="baseDiffNom">$0</div></div>
+    <div><div class="k">Factor base banco/app</div><div class="v mono" id="baseFactor">0</div></div>
+  </div>
+  <div class="grid card">
+    <div><div class="k">Impuesto nominal app</div><div class="v mono" id="taxNom">$0</div></div>
+    <div><div class="k">Impuesto banco actualizado</div><div class="v mono" id="taxBank">$0</div></div>
+    <div><div class="k">Diferencia impuesto nominal</div><div class="v mono" id="taxDiffNom">$0</div></div>
+    <div><div class="k">Factor impuesto banco/app</div><div class="v mono" id="taxFactor">0</div></div>
+  </div>
+  <div class="grid card">
+    <div><div class="k">Base recalculada por factor banco</div><div class="v mono warn" id="baseAdj">$0</div></div>
+    <div><div class="k">Diferencia base reaj.</div><div class="v mono" id="baseDiffAdj">$0</div></div>
+    <div><div class="k">Imp. recalculado por factor banco</div><div class="v mono" id="taxAdj">$0</div></div>
+    <div><div class="k">Diferencia imp. reaj.</div><div class="v mono" id="taxDiffAdj">$0</div></div>
+  </div>
+  <div class="card"><div class="k">Diagnóstico</div><div id="diag" class="notice"></div></div>
+  <div class="card"><div class="k">Detalle con columnas correctas</div><div id="tbl" class="scroll"></div></div>
+  <div class="card"><div class="k">Respaldo</div><button class="btn" onclick="downloadJson()">Descargar JSON</button></div>
+</section>
+<script>
+const STORE='finanzas_integrada_v5_fix_mes_utm';
+let S=load();
+function $(id){return document.getElementById(id)}
+function money(n){return '$'+Math.round(+n||0).toLocaleString('es-CL')}
+function clp(v){if(typeof v==='number')return Math.round(v)||0;let s=String(v||'').trim(),neg=s[0]=='-'||/\(.+\)/.test(s);s=s.replace(/[^\d,.-]/g,'');if(!s)return 0;let p=s.split(/[,.]/),last=p[p.length-1],hasDec=p.length>1&&last.length<=2,n=hasDec?Number(p.slice(0,-1).join('').replace(/\D/g,'')+'.'+last.replace(/\D/g,'')):Number(s.replace(/\D/g,''));return Math.round((neg?-1:1)*(n||0))}
+function y(d){return +String(d||'').slice(0,4)||new Date().getFullYear()}
+function load(){try{return normalize(JSON.parse(localStorage.getItem(STORE))||seed())}catch(e){return seed()}}
+function seed(){return{records:[],rentas:[],dj1887:[],obligations:[],payments:[]}}
+function normalize(s){s.records=s.records||[];s.rentas=s.rentas||[];s.dj1887=s.dj1887||[];s.records.forEach((r,i)=>{if(!r.id)r.id='r'+i;if(r.type!=='flow'&&!r.taxYear){let py=y(r.paymentDate);r.taxYear=r.type==='bonus'?py:py+1}if(r.type!=='flow'&&!r.rentaYear)r.rentaYear=r.taxYear-1});return s}
+function save(){localStorage.setItem(STORE,JSON.stringify(S));render()}
+function isTax(r){return r&&r.type!=='flow'&&r.isTaxable!==false}
+function getDJ(at){return S.dj1887.find(x=>+x.taxYear===+at)||S.rentas.find(x=>+x.taxYear===+at)||{taxYear:at,baseBank:0,taxBank:0,result:0}}
+function saveDJ(){let at=clp($('taxYear').value),dj={taxYear:at,baseBank:clp($('djBase').value),taxBank:clp($('djTax').value),result:clp($('f22Result').value),source:'DJ1887 manual'};if(dj.baseBank&&dj.taxBank&&Math.abs(dj.baseBank-dj.taxBank)<100000){$('msg').innerHTML='<p class="bad">No guardé: el impuesto actualizado no puede ser igual a la base actualizada.</p>';return}S.dj1887=S.dj1887.filter(x=>+x.taxYear!==at);S.dj1887.push(dj);save();$('msg').textContent='DJ/Banco guardado correctamente.'}
+function render(){let at=clp($('taxYear').value)||2026,R=S.records.filter(r=>isTax(r)&&+r.taxYear===at).sort((a,b)=>String(a.paymentDate).localeCompare(String(b.paymentDate))),baseNom=R.reduce((s,r)=>s+clp(r.taxableBaseClp),0),taxNom=R.reduce((s,r)=>s+clp(r.withheldTaxClp),0),dj=getDJ(at),baseBank=clp(dj.baseBank||dj.baseF22),taxBank=clp(dj.taxBank||dj.creditIusc),baseFactor=baseNom&&baseBank?baseBank/baseNom:1,taxFactor=taxNom&&taxBank?taxBank/taxNom:1,baseAdj=R.reduce((s,r)=>s+Math.round(clp(r.taxableBaseClp)*baseFactor),0),taxAdj=R.reduce((s,r)=>s+Math.round(clp(r.withheldTaxClp)*taxFactor),0);
+$('baseNom').textContent=money(baseNom);$('taxNom').textContent=money(taxNom);$('baseBank').textContent=money(baseBank);$('taxBank').textContent=money(taxBank);$('baseDiffNom').textContent=money(baseNom-baseBank);$('taxDiffNom').textContent=money(taxNom-taxBank);$('baseFactor').textContent=baseFactor.toFixed(5);$('taxFactor').textContent=taxFactor.toFixed(5);$('baseAdj').textContent=money(baseAdj);$('taxAdj').textContent=money(taxAdj);$('baseDiffAdj').textContent=money(baseAdj-baseBank);$('taxDiffAdj').textContent=money(taxAdj-taxBank);$('djBase').value=baseBank||'';$('djTax').value=taxBank||'';$('f22Result').value=dj.result||dj.refund||'';
+$('tbl').innerHTML=R.length?'<table><tr><th>Fecha pago</th><th>Tipo</th><th>Detalle</th><th>Base nominal</th><th>Base ajustada a banco</th><th>Imp. nominal</th><th>Imp. ajustado a banco</th><th>Renta</th><th>AT</th></tr>'+R.map(r=>`<tr><td>${r.paymentDate||''}</td><td>${r.type==='bonus'?'Bono':'Sueldo'}</td><td>${r.description||''}<br><span class="note">${r.source||''}</span></td><td>${money(r.taxableBaseClp)}</td><td>${money(clp(r.taxableBaseClp)*baseFactor)}</td><td>${money(r.withheldTaxClp)}</td><td>${money(clp(r.withheldTaxClp)*taxFactor)}</td><td>${r.rentaYear||''}</td><td>${r.taxYear||''}</td></tr>`).join('')+'</table>':'<p class="note">Sin registros para este AT.</p>';
+let msg=[];msg.push('Registros AT: '+R.length+'. Para tu caso deberían ser 13: 12 liquidaciones + bono reliquidado.');msg.push('La Base Banco y el Impuesto Banco vienen de la DJ 1887 / detalle agente retenedor, no del resultado final F22.');if(baseBank&&taxBank&&Math.abs(baseBank-taxBank)<100000)msg.push('<b class="bad">El impuesto está mal cargado: quedó igual a la base.</b>');if(taxBank&&taxBank<1000000)msg.push('<b class="bad">El impuesto banco parece demasiado bajo. Probablemente ingresaste devolución/resultado F22 en vez del impuesto único retenido actualizado.</b>');msg.push('El resultado/devolución F22 va separado y no debe compararse contra impuesto retenido.');$('diag').innerHTML=msg.map(x=>'<p>'+x+'</p>').join('')}
+function downloadJson(){let a=document.createElement('a'),b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});a.href=URL.createObjectURL(b);a.download='finanzas_v12_dj1887.json';a.click();URL.revokeObjectURL(a.href)}
+render();
+</script>
+</body>
+</html>
