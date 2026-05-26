@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Flujo y Créditos v3</title>
+<link rel="stylesheet" href="ingresos-pension.css">
+</head>
+<body>
+<div class="top">
+  <h1>Flujo, pensión y créditos v3</h1>
+  <div class="sub">Versión en línea para controlar pensión en UTM, arriendo, gastos fijos y créditos en cuotas. Los datos quedan guardados localmente en Safari.</div>
+  <span class="pill">Pensión 21,1108 UTM</span><span class="pill">Créditos en cuotas</span><span class="pill">Flujo mensual</span><span class="pill">Deudas</span>
+</div>
+
+<section id="sFlow" class="on">
+  <div class="card">
+    <div class="k">Mes de análisis</div>
+    <div class="row">
+      <div><label>Mes</label><input type="month" id="month"></div>
+      <div><label>Ingreso líquido del mes</label><input id="income" placeholder="ej: 3915000"></div>
+      <div style="align-self:end"><button class="btn" onclick="render()">Actualizar</button></div>
+      <div style="align-self:end"><button class="btn btn2" onclick="seedPension()">Pensión 21,1108 UTM</button></div>
+    </div>
+  </div>
+
+  <div class="grid card">
+    <div><div class="k">Obligaciones del mes</div><div class="v mono" id="kDue">$0</div></div>
+    <div><div class="k">Pagado</div><div class="v mono good" id="kPaid">$0</div></div>
+    <div><div class="k">Pendiente</div><div class="v mono bad" id="kPending">$0</div></div>
+    <div><div class="k">Flujo libre</div><div class="v mono" id="kFree">$0</div></div>
+  </div>
+
+  <div class="card">
+    <div class="k">Agregar gasto fijo simple</div>
+    <p class="note">Para arriendo, gastos comunes, servicios u obligaciones sin número de cuotas.</p>
+    <div class="row">
+      <div><label>Nombre</label><input id="obName" placeholder="Arriendo, gasto común, colegio"></div>
+      <div><label>Tipo</label><select id="obType"><option value="arriendo">Arriendo</option><option value="fijo">Gasto fijo</option><option value="pension">Pensión</option><option value="otro">Otro</option></select></div>
+      <div><label>Moneda</label><select id="obCurrency"><option>CLP</option><option>UF</option><option>UTM</option></select></div>
+      <div><label>Monto</label><input id="obAmount" placeholder="500000 o 21,1108"></div>
+    </div>
+    <button class="btn btnG" onclick="addFixed()">Guardar gasto fijo</button>
+  </div>
+
+  <div class="card">
+    <div class="k">Agregar crédito en cuotas</div>
+    <p class="note">La app proyecta automáticamente la cuota mensual mientras queden cuotas pendientes.</p>
+    <div class="row">
+      <div><label>Nombre crédito</label><input id="crName" placeholder="Consumo Banco, tarjeta, auto"></div>
+      <div><label>Monto cuota</label><input id="crAmount" placeholder="ej: 250000"></div>
+      <div><label>Total cuotas</label><input id="crTotal" type="number" placeholder="48"></div>
+      <div><label>Cuotas pagadas</label><input id="crPaidCount" type="number" placeholder="12"></div>
+    </div>
+    <div class="row">
+      <div><label>Primera cuota</label><input id="crStart" type="month"></div>
+      <div><label>Día vencimiento</label><input id="crDueDay" type="number" placeholder="5"></div>
+      <div><label>Moneda</label><select id="crCurrency"><option>CLP</option><option>UF</option><option>UTM</option></select></div>
+      <div><label>Nota</label><input id="crNote" placeholder="opcional"></div>
+    </div>
+    <button class="btn btnG" onclick="addCredit()">Guardar crédito</button>
+  </div>
+
+  <div class="card">
+    <div class="k">Registrar pago del mes</div>
+    <div class="row">
+      <div><label>Obligación</label><select id="payId"></select></div>
+      <div><label>Mes pagado</label><input id="payMonth" type="month"></div>
+      <div><label>Monto pagado</label><input id="payAmount" placeholder="vacío = monto esperado"></div>
+      <div><label>Nota</label><input id="payNote"></div>
+    </div>
+    <button class="btn btnG" onclick="addPayment()">Guardar pago</button>
+  </div>
+
+  <div class="card"><div class="k">Detalle del mes</div><div id="monthTable" class="scroll"></div></div>
+  <div class="card"><div class="k">Créditos y cuotas restantes</div><div id="creditTable" class="scroll"></div></div>
+</section>
+
+<section id="sBack">
+  <div class="card">
+    <div class="k">Respaldo</div>
+    <button class="btn" onclick="downloadJson()">Descargar JSON</button>
+    <label>Importar JSON</label><input type="file" id="json" accept=".json"><button class="btn btn2" onclick="importJson()">Importar JSON</button>
+    <button class="btn btnB" onclick="clearAll()">Borrar datos v3</button>
+    <div id="msg" class="notice">Datos guardados localmente en este navegador.</div>
+  </div>
+</section>
+
+<nav class="nav">
+  <button class="on" data-t="sFlow">Flujo</button>
+  <button data-t="sBack">Respaldo</button>
+  <button onclick="location.href='ingresos-pension-v2.html?v=12'">V2</button>
+</nav>
+
+<script>
+const STORE='flujo_creditos_v3_2026_05';
+const UTM={'2025-05':70588,'2025-06':71506,'2026-05':70588,'2026-06':71506,'2026-07':71506,'2026-08':71506,'2026-09':71506,'2026-10':71506,'2026-11':71506,'2026-12':71506,'2027-01':71506,'2027-02':71506,'2027-03':71506,'2027-04':71506,'2027-05':71506,'2027-06':71506,'2027-07':71506,'2027-08':71506,'2027-09':71506,'2027-10':71506,'2027-11':71506,'2027-12':71506};
+const UF={'2026-05':40740,'2026-06':40900,'2026-07':41050,'2026-08':41200,'2026-09':41350,'2026-10':41500,'2026-11':41650,'2026-12':41800,'2027-01':41900,'2027-02':42000,'2027-03':42100,'2027-04':42200,'2027-05':42300,'2027-06':42400,'2027-07':42500,'2027-08':42600,'2027-09':42700,'2027-10':42800,'2027-11':42900,'2027-12':43000};
+let S=load();
+function $(id){return document.getElementById(id)}
+function money(n){return '$'+Math.round(+n||0).toLocaleString('es-CL')}
+function clp(v){if(typeof v==='number')return Math.round(v)||0;let s=String(v||'').trim();let neg=s[0]=='-'||/\(.+\)/.test(s);s=s.replace(/[^\d,.-]/g,'');if(!s)return 0;let p=s.split(/[,.]/),last=p[p.length-1],hasDec=p.length>1&&last.length<=2;let n=hasDec?Number(p.slice(0,-1).join('').replace(/\D/g,'')+'.'+last.replace(/\D/g,'')):Number(s.replace(/\D/g,''));return Math.round((neg?-1:1)*(n||0))}
+function parseNum(v){return Number(String(v||'').replace(',','.'))||0}
+function ymNow(){return new Date().toISOString().slice(0,7)}
+function monthAdd(ym,n){let [y,m]=ym.split('-').map(Number);let d=new Date(y,m-1+n,1);return d.toISOString().slice(0,7)}
+function monthDiff(a,b){let [ay,am]=a.split('-').map(Number),[by,bm]=b.split('-').map(Number);return (by-ay)*12+(bm-am)}
+function unit(cur,m){if(cur==='UTM')return UTM[m]||0;if(cur==='UF')return UF[m]||0;return 1}
+function amountCLP(o,m){return Math.round((+o.amount||0)*unit(o.currency,m))}
+function load(){try{return JSON.parse(localStorage.getItem(STORE))||seed()}catch(e){return seed()}}
+function seed(){return{obligations:[{id:'pension',kind:'fixed',name:'Pensión alimentos',type:'pension',currency:'UTM',amount:21.1108,active:true}],payments:[]}}
+function save(){localStorage.setItem(STORE,JSON.stringify(S));render()}
+function nav(id){document.querySelectorAll('section').forEach(s=>s.classList.remove('on'));$(id).classList.add('on');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===id))}
+document.querySelectorAll('.nav button[data-t]').forEach(b=>b.onclick=()=>nav(b.dataset.t));
+function seedPension(){let p=S.obligations.find(o=>o.id==='pension');if(!p)S.obligations.push({id:'pension',kind:'fixed',name:'Pensión alimentos',type:'pension',currency:'UTM',amount:21.1108,active:true});else{p.amount=21.1108;p.currency='UTM';p.active=true}save()}
+function addFixed(){S.obligations.push({id:'o'+Date.now(),kind:'fixed',name:$('obName').value||'Gasto fijo',type:$('obType').value,currency:$('obCurrency').value,amount:parseNum($('obAmount').value),active:true});save()}
+function addCredit(){let total=clp($('crTotal').value),paid=clp($('crPaidCount').value);S.obligations.push({id:'c'+Date.now(),kind:'credit',name:$('crName').value||'Crédito',type:'deuda',currency:$('crCurrency').value,amount:parseNum($('crAmount').value),totalInstallments:total,paidInstallments:paid,startMonth:$('crStart').value||ymNow(),dueDay:clp($('crDueDay').value)||5,note:$('crNote').value||'',active:true});save()}
+function expectedForMonth(o,m){if(o.active===false)return 0;if(o.kind!=='credit')return amountCLP(o,m);let idx=monthDiff(o.startMonth,m)+1;if(idx<=0||idx>o.totalInstallments)return 0;if(idx<=o.paidInstallments)return 0;return amountCLP(o,m)}
+function installmentInfo(o,m){if(o.kind!=='credit')return '';let idx=monthDiff(o.startMonth,m)+1;let remaining=Math.max(0,o.totalInstallments-Math.max(o.paidInstallments,Math.min(o.totalInstallments,idx-1)));return `Cuota ${idx>0?idx:'—'} de ${o.totalInstallments} · pagadas ${o.paidInstallments} · restantes ${remaining}`}
+function addPayment(){let id=$('payId').value,m=$('payMonth').value||ymNow(),o=S.obligations.find(x=>x.id===id);if(!o)return;let expected=expectedForMonth(o,m)||amountCLP(o,m);let amt=clp($('payAmount').value)||expected;S.payments.push({id:'p'+Date.now(),obligationId:id,month:m,amount:amt,note:$('payNote').value||''});if(o.kind==='credit'){o.paidInstallments=Math.min((+o.paidInstallments||0)+1,+o.totalInstallments||0);if(o.paidInstallments>=o.totalInstallments)o.active=false}save()}
+function monthRows(m){return S.obligations.filter(o=>o.active!==false||S.payments.some(p=>p.obligationId===o.id&&p.month===m)).map(o=>{let expected=expectedForMonth(o,m),paid=S.payments.filter(p=>p.obligationId===o.id&&p.month===m).reduce((s,p)=>s+clp(p.amount),0);return{...o,expected,paid,pending:expected-paid,unit:unit(o.currency,m)}})}
+function render(){let m=$('month').value||ymNow();$('month').value=m;$('payMonth').value=$('payMonth').value||m;let rows=monthRows(m),due=rows.reduce((s,r)=>s+r.expected,0),paid=rows.reduce((s,r)=>s+r.paid,0),income=clp($('income').value);$('kDue').textContent=money(due);$('kPaid').textContent=money(paid);$('kPending').textContent=money(due-paid);$('kFree').textContent=money(income-due);$('payId').innerHTML=S.obligations.filter(o=>o.active!==false).map(o=>`<option value="${o.id}">${o.name}</option>`).join('');$('monthTable').innerHTML='<table><tr><th>Obligación</th><th>Tipo</th><th>Vence</th><th>Debe mes</th><th>Pagado</th><th>Pendiente</th><th>Detalle</th></tr>'+rows.map(r=>`<tr><td>${r.name}</td><td>${r.kind==='credit'?'Crédito':r.type}<br><span class="note">${r.currency} ${r.amount}</span></td><td>${r.dueDay||5}</td><td class="money">${money(r.expected)}</td><td class="money">${money(r.paid)}</td><td class="money">${money(r.pending)}</td><td>${installmentInfo(r,m)}<br><span class="note">${r.note||''}</span></td></tr>`).join('')+'</table>';renderCredits(m)}
+function renderCredits(m){let credits=S.obligations.filter(o=>o.kind==='credit');if(!credits.length){$('creditTable').innerHTML='<p class="note">Sin créditos cargados.</p>';return} $('creditTable').innerHTML='<table><tr><th>Crédito</th><th>Cuota</th><th>Total</th><th>Pagadas</th><th>Restantes</th><th>Inicio</th><th>Venc.</th><th>Estado</th></tr>'+credits.map(c=>{let rem=Math.max(0,c.totalInstallments-c.paidInstallments),next=monthAdd(c.startMonth,c.paidInstallments);return`<tr><td>${c.name}<br><span class="note">${c.note||''}</span></td><td class="money">${money(amountCLP(c,m))}</td><td>${c.totalInstallments}</td><td>${c.paidInstallments}</td><td>${rem}</td><td>${c.startMonth}</td><td>Día ${c.dueDay||5}<br><span class="note">Próx: ${rem>0?next:'terminado'}</span></td><td>${c.active===false?'Terminado':'Vigente'}</td></tr>`}).join('')+'</table>'}
+function downloadJson(){let a=document.createElement('a'),b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});a.href=URL.createObjectURL(b);a.download='flujo_creditos_v3.json';a.click();URL.revokeObjectURL(a.href)}
+async function importJson(){try{S=JSON.parse(await $('json').files[0].text());save();$('msg').textContent='Importado.'}catch(e){$('msg').textContent='No pude importar.'}}
+function clearAll(){if(confirm('¿Borrar datos v3?')){S=seed();save()}}
+(function init(){let m=ymNow();$('month').value=m;$('payMonth').value=m;render()})();
+</script>
+</body>
+</html>
