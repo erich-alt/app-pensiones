@@ -1,0 +1,11 @@
+// Hotfix F22 v11: evita que el codigo 162 tome por error la base 170.
+(function(){
+function n(v){if(window.clp)return window.clp(v);return Math.round(Number(String(v||'').replace(/\D/g,'')))||0}
+function clean(t){return String(t||'').replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ').replace(/\n+/g,'\n')}
+function numsNear(txt,re,before,after){let c=clean(txt),m=c.match(re);if(!m)return[];let i=m.index||0,w=c.slice(Math.max(0,i-(before||120)),Math.min(c.length,i+(after||260)));return (w.match(/-?\d{1,3}(?:\.\d{3})+/g)||[]).map(n).filter(x=>x>0)}
+function appTax(at){try{return (window.S?.records||[]).filter(r=>r&&r.type!=='flow'&&r.isTaxable!==false&&Number(r.taxYear)===Number(at)).reduce((s,r)=>s+n(r.withheldTaxClp),0)}catch(e){return 0}}
+window.parseF22Text=function(text,source){let c=clean(text);let at=+(c.match(/AÑO\s+TRIBUTARIO\s+(20\d{2})/i)||[])[1]||+(c.match(/AT\s*(20\d{2})/i)||[])[1]||Number(document.getElementById('taxYearSel')?.value)||Number(document.getElementById('taxYear')?.value)||new Date().getFullYear();let baseVals=[...numsNear(c,/Renta\s+Total\s+Neta/i,80,260),...numsNear(c,/\b170\b/i,80,260),...numsNear(c,/\b1098\b/i,80,260)];let base=Math.max(0,...baseVals.filter(x=>x>10000000));let creditVals=[...numsNear(c,/Impuesto\s+[UÚuú]nico\s+de\s+Segunda\s+Categor/i,80,260),...numsNear(c,/Cr[eé]dito\s+IUSC/i,80,260),...numsNear(c,/\b162\b/i,80,260)];let credit=creditVals.find(x=>x>100000&&x<base*0.5)||0;if(!credit&&appTax(at))credit=Math.round(appTax(at)*1.0123);let refundVals=[...numsNear(c,/MONTO\s+DEVOLUCI[ÓO]N\s+SOLICITADA/i,80,220),...numsNear(c,/SALDO\s+A\s+FAVOR/i,80,220)];return{id:'f22_'+at+'_'+Date.now(),taxYear:at,incomeYear:at-1,source:source||'F22',baseF22:base,creditIusc:credit,refund:refundVals.find(x=>x>0)||0,pay:0,codes:{170:base,162:credit}}
+};
+function validate(){let b=n(document.getElementById('f22base')?.value),t=n(document.getElementById('f22tax')?.value);if(b&&t&&Math.abs(b-t)<100000){document.getElementById('f22tax').value='';let m=document.getElementById('f22Msg');if(m)m.textContent='Corregido: el credito IUSC no puede ser igual a la base F22. Ingresa el codigo 162 real.'}}
+setInterval(validate,1000);
+})();
